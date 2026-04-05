@@ -1,22 +1,23 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import Loader from "../ui/Loader";
-import {
-  isAllowedStatus,
-  getDashboardPathByRole,
-} from "../../utils/authGuards";
+import { isAllowedStatus, getDashboardPathByRole } from "../../utils/authGuards";
 
 const ProtectedRoute = ({ children, roles = [] }) => {
   const { session, profile, loading } = useAuth();
   const location = useLocation();
 
-  if (loading) return <Loader />;
+  // Attendre que l'auth soit vraiment initialisée
+  if (loading || session === undefined) return <Loader />;
 
   if (!session) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (!profile || profile.deleted_at) {
+  // Session OK mais profil pas encore chargé → attendre
+  if (session && !profile) return <Loader />;
+
+  if (profile.deleted_at) {
     return <Navigate to="/login" replace />;
   }
 
@@ -32,10 +33,7 @@ const ProtectedRoute = ({ children, roles = [] }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (
-    isAllowedStatus(profile.status) &&
-    location.pathname === "/pending-approval"
-  ) {
+  if (isAllowedStatus(profile.status) && location.pathname === "/pending-approval") {
     return <Navigate to={getDashboardPathByRole(profile.role)} replace />;
   }
 

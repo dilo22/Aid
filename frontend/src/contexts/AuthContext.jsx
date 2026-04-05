@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { getMe } from "../api/authApi";
 
@@ -6,82 +6,63 @@ const AuthContext = createContext(null);
 
 const normalizeProfile = (profile) => {
   if (!profile) return null;
-
   const firstName = profile.first_name?.trim() || "";
   const lastName = profile.last_name?.trim() || "";
-  const displayName = `${firstName} ${lastName}`.trim();
-
   return {
     ...profile,
     first_name: firstName,
     last_name: lastName,
-    display_name: displayName || profile.email || "",
+    display_name: `${firstName} ${lastName}`.trim() || profile.email || "",
   };
 };
 
 export const AuthProvider = ({ children }) => {
-  const [session, setSession] = useState(null);
+  const [session, setSession] = useState(undefined); // undefined = pas encore initialisé
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const isFetchingProfile = useRef(false);
 
   const fetchProfile = async () => {
+    if (isFetchingProfile.current) return;
+    isFetchingProfile.current = true;
     try {
       const me = await getMe();
-      const normalized = normalizeProfile(me);
-      setProfile(normalized);
-      return normalized;
-    } catch (error) {
-      console.error("fetchProfile error:", error);
+      setProfile(normalizeProfile(me));
+    } catch {
       setProfile(null);
-      return null;
+    } finally {
+      isFetchingProfile.current = false;
     }
   };
 
   useEffect(() => {
     let mounted = true;
 
-    const initAuth = async () => {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        if (!mounted) return;
-
-        setSession(session);
-
-        if (session) {
-          await fetchProfile();
-        } else {
-          setProfile(null);
-        }
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-
-    initAuth();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!mounted) return;
-
-      setSession(session);
-
-      if (!session) {
-        setProfile(null);
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      await fetchProfile();
-
-      if (mounted) {
-        setLoading(false);
-      }
+      setSession(session ?? null);
+      if (session) await fetchProfile();
+      if (mounted) setLoading(false);
     });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!mounted) return;
+        // Ignore INITIAL_SESSION : déjà géré par getSession() ci-dessus
+        if (event === "INITIAL_SESSION") return;
+
+        setSession(session ?? null);
+
+        if (event === "SIGNED_OUT") {
+          setProfile(null);
+          return;
+        }
+
+        if (event === "SIGNED_IN" && session) {
+          await fetchProfile();
+        }
+      }
+    );
 
     return () => {
       mounted = false;
@@ -96,16 +77,14 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        session,
-        user: session?.user ?? null,
-        profile,
-        loading,
-        signOut,
-        refreshProfile: fetchProfile,
-      }}
-    >
+    <AuthContext.Provider value={{
+      session,
+      user: session?.user ?? null,
+      profile,
+      loading,
+      signOut,
+      refreshProfile: fetchProfile,
+    }}>
       {children}
     </AuthContext.Provider>
   );
