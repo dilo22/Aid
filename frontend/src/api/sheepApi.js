@@ -10,8 +10,9 @@ export const createSheep = async (payload) => {
   return data;
 };
 
+// ✅ PUT → PATCH
 export const updateSheep = async (id, payload) => {
-  const { data } = await api.put(`/sheep/${id}`, payload);
+  const { data } = await api.patch(`/sheep/${id}`, payload);
   return data;
 };
 

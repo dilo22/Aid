@@ -1,41 +1,15 @@
 import { Router } from "express";
-import {
-  createSheep,
-  getSheepList,
-  updateSheep,
-  deleteSheep,
-} from "../controllers/sheepController.js";
+import { createSheep, getSheepList, updateSheep, deleteSheep } from "../controllers/sheepController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
 import { requireRole } from "../middlewares/roleMiddleware.js";
 
 const router = Router();
 
-router.get(
-  "/",
-  requireAuth,
-  requireRole("admin", "organization", "fidel"),
-  getSheepList
-);
+router.use(requireAuth);
 
-router.post(
-  "/",
-  requireAuth,
-  requireRole("admin"),
-  createSheep
-);
-
-router.put(
-  "/:id",
-  requireAuth,
-  requireRole("admin"),
-  updateSheep
-);
-
-router.delete(
-  "/:id",
-  requireAuth,
-  requireRole("admin"),
-  deleteSheep
-);
+router.get("/",      requireRole("admin", "organization", "fidel"), getSheepList);
+router.post("/",     requireRole("admin"), createSheep);
+router.patch("/:id", requireRole("admin"), updateSheep); // ✅ PUT → PATCH
+router.delete("/:id", requireRole("admin"), deleteSheep);
 
 export default router;

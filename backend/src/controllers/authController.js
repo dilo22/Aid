@@ -1,85 +1,94 @@
 import { supabase } from "../config/supabase.js";
 import { ApiError } from "../utils/apiError.js";
 
+// ✅ Helpers de validation
+const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+const isValidUUID = (id) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
+const validatePassword = (password) => {
+  if (!password || password.length < 8) {
+    throw new ApiError(400, "Le mot de passe doit contenir au moins 8 caractères");
+  }
+  if (!/[A-Z]/.test(password)) {
+    throw new ApiError(400, "Le mot de passe doit contenir au moins une majuscule");
+  }
+  if (!/[0-9]/.test(password)) {
+    throw new ApiError(400, "Le mot de passe doit contenir au moins un chiffre");
+  }
+};
+
 export const register = async (req, res, next) => {
   try {
-    const {
-      first_name,
-      last_name,
-      phone,
-      email,
-      password,
-      organization_id,
-    } = req.body;
+    const { first_name, last_name, phone, email, password, organization_id } = req.body;
 
     const cleanFirstName = first_name?.trim() || "";
-    const cleanLastName = last_name?.trim() || "";
-    const cleanPhone = phone?.trim() || null;
-    const cleanEmail = email?.trim().toLowerCase() || "";
+    const cleanLastName  = last_name?.trim()  || "";
+    const cleanPhone     = phone?.trim()       || null;
+    const cleanEmail     = email?.trim().toLowerCase() || "";
 
-    if (!cleanFirstName) {
-      throw new ApiError(400, "Le prénom est obligatoire");
+    // ✅ Validations
+    if (!cleanFirstName) throw new ApiError(400, "Le prénom est obligatoire");
+    if (!cleanLastName)  throw new ApiError(400, "Le nom est obligatoire");
+    if (!cleanEmail)     throw new ApiError(400, "L'email est obligatoire");
+
+    // ✅ Validation format email
+    if (!isValidEmail(cleanEmail)) {
+      throw new ApiError(400, "Format d'email invalide");
     }
 
-    if (!cleanLastName) {
-      throw new ApiError(400, "Le nom est obligatoire");
-    }
+    // ✅ Validation mot de passe renforcée
+    validatePassword(password);
 
-    if (!cleanEmail) {
-      throw new ApiError(400, "L'email est obligatoire");
-    }
-
-    if (!password || password.length < 6) {
-      throw new ApiError(
-        400,
-        "Le mot de passe est obligatoire et doit contenir au moins 6 caractères"
-      );
+    // ✅ Validation UUID organization_id
+    if (organization_id && !isValidUUID(organization_id)) {
+      throw new ApiError(400, "Identifiant d'organisation invalide");
     }
 
     if (organization_id) {
-      const { data: organization, error: organizationError } = await supabase
+      const { data: organization, error: orgError } = await supabase
         .from("organizations")
         .select("id, is_active, deleted_at")
         .eq("id", organization_id)
         .single();
 
-      if (organizationError || !organization) {
+      if (orgError || !organization) {
         throw new ApiError(400, "Organisation invalide");
       }
-
       if (!organization.is_active || organization.deleted_at) {
         throw new ApiError(400, "Cette organisation n'est pas disponible");
       }
     }
 
-    const { data: existingProfile, error: existingProfileError } =
-      await supabase
-        .from("profiles")
-        .select("id, email")
-        .eq("email", cleanEmail)
-        .maybeSingle();
+    // ✅ Vérification email existant — message neutre (anti-énumération)
+    const { data: existingProfile, error: existingError } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("email", cleanEmail)
+      .maybeSingle();
 
-    if (existingProfileError) {
-      throw new ApiError(500, existingProfileError.message);
+    if (existingError) {
+      // Ne pas exposer le message Supabase
+      console.error("[REGISTER] existingProfile check error:", existingError);
+      throw new ApiError(500, "Erreur serveur");
     }
 
     if (existingProfile) {
-      throw new ApiError(409, "Un compte existe déjà avec cette adresse email");
+      // ✅ Message neutre — ne pas confirmer si l'email existe
+      throw new ApiError(409, "Impossible de créer ce compte");
     }
 
-    const { data: authData, error: authError } =
-      await supabase.auth.admin.createUser({
-        email: cleanEmail,
-        password,
-        email_confirm: true,
-        user_metadata: {
-          first_name: cleanFirstName,
-          last_name: cleanLastName,
-        },
-      });
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email: cleanEmail,
+      password,
+      email_confirm: true,
+      user_metadata: { first_name: cleanFirstName, last_name: cleanLastName },
+    });
 
     if (authError || !authData?.user) {
-      throw new ApiError(400, authError?.message || "Erreur lors de la création du compte");
+      console.error("[REGISTER] createUser error:", authError);
+      throw new ApiError(400, "Erreur lors de la création du compte");
     }
 
     const userId = authData.user.id;
@@ -101,8 +110,10 @@ export const register = async (req, res, next) => {
     });
 
     if (profileError) {
+      // ✅ Rollback propre si le profil échoue
       await supabase.auth.admin.deleteUser(userId);
-      throw new ApiError(400, profileError.message);
+      console.error("[REGISTER] profile insert error:", profileError);
+      throw new ApiError(500, "Erreur lors de la création du profil");
     }
 
     res.status(201).json({
@@ -119,13 +130,27 @@ export const changePassword = async (req, res, next) => {
       throw new ApiError(401, "Utilisateur non authentifié");
     }
 
-    const { password } = req.body;
+    const { password, current_password } = req.body;
 
-    if (!password || password.length < 6) {
-      throw new ApiError(
-        400,
-        "Le nouveau mot de passe doit contenir au moins 6 caractères"
-      );
+    // ✅ Vérification de l'ancien mot de passe
+    if (!current_password) {
+      throw new ApiError(400, "Le mot de passe actuel est requis");
+    }
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: req.user.email,
+      password: current_password,
+    });
+
+    if (signInError) {
+      throw new ApiError(403, "Mot de passe actuel incorrect");
+    }
+
+    // ✅ Validation du nouveau mot de passe
+    validatePassword(password);
+
+    if (password === current_password) {
+      throw new ApiError(400, "Le nouveau mot de passe doit être différent de l'ancien");
     }
 
     const { error: passwordError } = await supabase.auth.admin.updateUserById(
@@ -134,27 +159,25 @@ export const changePassword = async (req, res, next) => {
     );
 
     if (passwordError) {
-      throw new ApiError(400, passwordError.message);
+      console.error("[CHANGE_PASSWORD] updateUserById error:", passwordError);
+      throw new ApiError(500, "Erreur lors de la mise à jour du mot de passe");
     }
-
-    const now = new Date().toISOString();
 
     const { error: profileError } = await supabase
       .from("profiles")
       .update({
         must_change_password: false,
-        updated_at: now,
+        updated_at: new Date().toISOString(),
         updated_by: req.user.id,
       })
       .eq("id", req.user.id);
 
     if (profileError) {
-      throw new ApiError(400, profileError.message);
+      console.error("[CHANGE_PASSWORD] profile update error:", profileError);
+      throw new ApiError(500, "Erreur lors de la mise à jour du profil");
     }
 
-    res.json({
-      message: "Mot de passe mis à jour avec succès",
-    });
+    res.json({ message: "Mot de passe mis à jour avec succès" });
   } catch (error) {
     next(error);
   }
@@ -166,24 +189,24 @@ export const getMe = async (req, res, next) => {
       throw new ApiError(401, "Utilisateur non authentifié");
     }
 
-    const firstName = req.profile.first_name?.trim?.() || "";
-    const lastName = req.profile.last_name?.trim?.() || "";
+    const firstName   = req.profile.first_name?.trim() || "";
+    const lastName    = req.profile.last_name?.trim()  || "";
     const displayName = `${firstName} ${lastName}`.trim();
 
     res.json({
-      id: req.user.id,
-      email: req.profile.email || req.user.email || null,
-      first_name: firstName || null,
-      last_name: lastName || null,
-      display_name: displayName || null,
-      phone: req.profile.phone || null,
-      role: req.profile.role,
-      status: req.profile.status,
-      organization_id: req.profile.organization_id || null,
-      organization: req.profile.organization || null,
+      id:                   req.user.id,
+      email:                req.profile.email || req.user.email || null,
+      first_name:           firstName  || null,
+      last_name:            lastName   || null,
+      display_name:         displayName || null,
+      phone:                req.profile.phone || null,
+      role:                 req.profile.role,
+      status:               req.profile.status,
+      organization_id:      req.profile.organization_id || null,
+      organization:         req.profile.organization    || null,
       must_change_password: req.profile.must_change_password ?? false,
-      created_at: req.profile.created_at,
-      updated_at: req.profile.updated_at || null,
+      created_at:           req.profile.created_at,
+      updated_at:           req.profile.updated_at || null,
     });
   } catch (error) {
     next(error);

@@ -15,8 +15,9 @@ export const createPayment = async (payload) => {
   return data;
 };
 
+// ✅ PUT → PATCH
 export const updatePayment = async (id, payload) => {
-  const { data } = await client.put(`/payments/${id}`, payload);
+  const { data } = await client.patch(`/payments/${id}`, payload);
   return data;
 };
 

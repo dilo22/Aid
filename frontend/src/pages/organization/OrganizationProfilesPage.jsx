@@ -5,355 +5,83 @@ import {
   updateOrganizationFidel,
   deleteOrganizationFidel,
 } from "../../api/profilesApi";
-import { useAuth } from "../../contexts/AuthContext";
+import StatusBadge from "../../components/ui/StatusBadge";
+import "../../styles/OrganizationPages.css";
 
-const getEmptyForm = () => ({
-  first_name: "",
-  last_name: "",
-  email: "",
-  phone: "",
-  status: "approved",
+const EMPTY_FORM = () => ({
+  first_name: "", last_name: "", email: "", phone: "", status: "approved",
 });
 
-const styles = {
-  page: {
-    minHeight: "100vh",
-    background: "#f8fafc",
-    padding: 24,
-  },
-  container: {
-    maxWidth: 1600,
-    margin: "0 auto",
-    display: "grid",
-    gap: 20,
-  },
-  card: {
-    background: "#fff",
-    border: "1px solid #e2e8f0",
-    borderRadius: 18,
-    boxShadow: "0 8px 24px rgba(15, 23, 42, 0.06)",
-  },
-  header: {
-    padding: 24,
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 16,
-    flexWrap: "wrap",
-  },
-  titleBlock: {
-    display: "grid",
-    gap: 6,
-  },
-  title: {
-    margin: 0,
-    fontSize: 28,
-    color: "#0f172a",
-    fontWeight: 800,
-  },
-  subtitle: {
-    margin: 0,
-    color: "#64748b",
-    lineHeight: 1.6,
-  },
-  toolbar: {
-    padding: 20,
-    display: "grid",
-    gap: 16,
-    borderTop: "1px solid #e2e8f0",
-  },
-  toolbarRow: {
-    display: "grid",
-    gridTemplateColumns: "2fr 1fr",
-    gap: 12,
-  },
-  input: {
-    width: "100%",
-    padding: "12px 14px",
-    border: "1px solid #dbe3f0",
-    borderRadius: 12,
-    fontSize: 14,
-    boxSizing: "border-box",
-    background: "#fff",
-    outline: "none",
-  },
-  form: {
-    padding: 20,
-    display: "grid",
-    gap: 16,
-    borderTop: "1px solid #e2e8f0",
-  },
-  formGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
-    gap: 12,
-  },
-  buttonPrimary: {
-    border: "none",
-    borderRadius: 12,
-    padding: "12px 18px",
-    background: "#2563eb",
-    color: "#fff",
-    fontWeight: 700,
-    cursor: "pointer",
-  },
-  buttonSecondary: {
-    border: "1px solid #cbd5e1",
-    borderRadius: 12,
-    padding: "12px 18px",
-    background: "#fff",
-    color: "#0f172a",
-    fontWeight: 700,
-    cursor: "pointer",
-  },
-  iconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    cursor: "pointer",
-    fontSize: 16,
-    fontWeight: 700,
-    background: "#fff",
-  },
-  editButton: {
-    border: "1px solid #bfdbfe",
-    background: "#eff6ff",
-    color: "#1d4ed8",
-  },
-  dangerButton: {
-    border: "1px solid #fecaca",
-    background: "#fff1f2",
-    color: "#be123c",
-  },
-  errorBox: {
-    padding: 16,
-    margin: "0 20px",
-    borderRadius: 12,
-    background: "#fff1f2",
-    border: "1px solid #fecdd3",
-    color: "#9f1239",
-    fontWeight: 600,
-  },
-  successBox: {
-    padding: 16,
-    margin: "0 20px",
-    borderRadius: 12,
-    background: "#eff6ff",
-    border: "1px solid #bfdbfe",
-    color: "#1d4ed8",
-    fontWeight: 600,
-  },
-  tableWrap: {
-    overflowX: "auto",
-  },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-    minWidth: 1100,
-  },
-  th: {
-    textAlign: "left",
-    padding: "14px 16px",
-    fontSize: 13,
-    color: "#475569",
-    background: "#f8fafc",
-    borderBottom: "1px solid #e2e8f0",
-    whiteSpace: "nowrap",
-  },
-  td: {
-    padding: "16px",
-    borderBottom: "1px solid #eef2f7",
-    color: "#0f172a",
-    verticalAlign: "middle",
-    whiteSpace: "nowrap",
-  },
-  empty: {
-    padding: 32,
-    textAlign: "center",
-    color: "#64748b",
-  },
-  topStats: {
-    padding: "0 20px 20px",
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-    gap: 12,
-  },
-  statCard: {
-    border: "1px solid #e2e8f0",
-    borderRadius: 16,
-    padding: 16,
-    background: "#f8fafc",
-  },
-  statLabel: {
-    fontSize: 13,
-    color: "#64748b",
-    marginBottom: 8,
-  },
-  statValue: {
-    fontSize: 28,
-    fontWeight: 800,
-    color: "#0f172a",
-    lineHeight: 1,
-  },
-  statMeta: {
-    marginTop: 8,
-    fontSize: 12,
-    color: "#64748b",
-  },
-  actions: {
-    display: "flex",
-    gap: 8,
-    alignItems: "center",
-  },
-};
-
-const getStatusTheme = (status) => {
-  switch (status) {
-    case "approved":
-      return {
-        background: "#eff6ff",
-        color: "#1d4ed8",
-        border: "1px solid #bfdbfe",
-        label: "Approuvé",
-      };
-    case "pending":
-      return {
-        background: "#fff7ed",
-        color: "#c2410c",
-        border: "1px solid #fdba74",
-        label: "En attente",
-      };
-    case "rejected":
-      return {
-        background: "#fff1f2",
-        color: "#be123c",
-        border: "1px solid #fecdd3",
-        label: "Rejeté",
-      };
-    default:
-      return {
-        background: "#f8fafc",
-        color: "#475569",
-        border: "1px solid #e2e8f0",
-        label: status || "-",
-      };
-  }
-};
-
-const formatDateTime = (value) => {
-  if (!value) return "-";
-  return new Date(value).toLocaleString("fr-FR");
-};
-
-const cleanPayload = (payload) => {
-  return {
-    first_name: String(payload.first_name || "").trim(),
-    last_name: String(payload.last_name || "").trim(),
-    email: String(payload.email || "").trim().toLowerCase(),
-    phone: String(payload.phone || "").trim(),
-    status: String(payload.status || "approved").trim(),
-  };
-};
+const formatDate = (v) => v ? new Date(v).toLocaleDateString("fr-FR") : "-";
 
 const StatCard = ({ label, value, meta }) => (
-  <div style={styles.statCard}>
-    <div style={styles.statLabel}>{label}</div>
-    <div style={styles.statValue}>{value}</div>
-    <div style={styles.statMeta}>{meta}</div>
+  <div className="org-stat-card">
+    <div className="org-stat-label">{label}</div>
+    <div className="org-stat-value">{value}</div>
+    {meta && <div className="org-stat-meta">{meta}</div>}
   </div>
 );
 
 export default function OrganizationProfilesPage() {
-  const { session } = useAuth();
-
-  const [profiles, setProfiles] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [profiles,   setProfiles]   = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [saving,     setSaving]     = useState(false);
   const [deletingId, setDeletingId] = useState(null);
 
-  const [showForm, setShowForm] = useState(false);
+  const [showForm,  setShowForm]  = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState(getEmptyForm());
+  const [form,      setForm]      = useState(EMPTY_FORM());
 
-  const [errorMessage, setErrorMessage] = useState("");
+  const [errorMessage,   setErrorMessage]   = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
-  const [search, setSearch] = useState("");
+  const [search,       setSearch]       = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
   const loadProfiles = async () => {
     try {
       setLoading(true);
       setErrorMessage("");
-
-      const data = await getOrganizationFidels(
-        {
-          search,
-          status: statusFilter,
-        },
-        session?.access_token
-      );
-
-      const normalizedProfiles = Array.isArray(data?.items)
-        ? data.items
-        : Array.isArray(data)
-        ? data
-        : [];
-
-      setProfiles(normalizedProfiles);
+      // ✅ Pas de token manuel
+      const data = await getOrganizationFidels();
+      setProfiles(Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error("Erreur chargement fidèles organization :", error);
-      setProfiles([]);
+      console.error("[OrgProfilesPage] load:", error);
       setErrorMessage(error?.message || "Impossible de charger les fidèles.");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadProfiles();
-  }, [session?.access_token]);
+  // ✅ Pas de dépendance sur session?.access_token
+  useEffect(() => { loadProfiles(); }, []);
 
+  // ✅ Filtrage côté client uniquement (données déjà chargées)
   const filteredProfiles = useMemo(() => {
     const term = search.trim().toLowerCase();
-
     return profiles.filter((item) => {
-      const matchesSearch =
-        !term ||
-        [
-          item.first_name,
-          item.last_name,
-          item.email,
-          item.phone,
-          item.status,
-          item.created_at,
-          item.id,
-        ]
-          .filter(Boolean)
-          .some((value) => String(value).toLowerCase().includes(term));
-
-      const matchesStatus =
-        statusFilter === "all" || String(item.status || "") === statusFilter;
-
-      return matchesSearch && matchesStatus;
+      const matchSearch = !term || [item.first_name, item.last_name, item.email, item.phone]
+        .filter(Boolean).some((v) => String(v).toLowerCase().includes(term));
+      const matchStatus = statusFilter === "all" || item.status === statusFilter;
+      return matchSearch && matchStatus;
     });
   }, [profiles, search, statusFilter]);
 
-  const stats = useMemo(() => {
-    const total = profiles.length;
-    const approved = profiles.filter((item) => item.status === "approved").length;
-    const pending = profiles.filter((item) => item.status === "pending").length;
-    const rejected = profiles.filter((item) => item.status === "rejected").length;
+  const stats = useMemo(() => ({
+    total:    profiles.length,
+    approved: profiles.filter((i) => i.status === "approved").length,
+    pending:  profiles.filter((i) => i.status === "pending").length,
+    rejected: profiles.filter((i) => i.status === "rejected").length,
+  }), [profiles]);
 
-    return { total, approved, pending, rejected };
-  }, [profiles]);
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleOpenCreate = () => {
     setEditingId(null);
-    setForm(getEmptyForm());
+    setForm(EMPTY_FORM());
     setShowForm(true);
     setErrorMessage("");
     setSuccessMessage("");
@@ -363,10 +91,10 @@ export default function OrganizationProfilesPage() {
     setEditingId(item.id);
     setForm({
       first_name: item.first_name || "",
-      last_name: item.last_name || "",
-      email: item.email || "",
-      phone: item.phone || "",
-      status: item.status || "approved",
+      last_name:  item.last_name  || "",
+      email:      item.email      || "",
+      phone:      item.phone      || "",
+      status:     item.status     || "approved",
     });
     setShowForm(true);
     setErrorMessage("");
@@ -375,87 +103,58 @@ export default function OrganizationProfilesPage() {
 
   const handleCancel = () => {
     setEditingId(null);
-    setForm(getEmptyForm());
+    setForm(EMPTY_FORM());
     setShowForm(false);
     setErrorMessage("");
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-
-    setForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrorMessage("");
+    setSuccessMessage("");
 
+    const payload = {
+      first_name: form.first_name.trim(),
+      last_name:  form.last_name.trim(),
+      email:      form.email.trim().toLowerCase(),
+      phone:      form.phone.trim(),
+      status:     form.status,
+    };
+
+    if (!payload.first_name) return setErrorMessage("Le prénom est obligatoire.");
+    if (!payload.last_name)  return setErrorMessage("Le nom est obligatoire.");
+    if (!payload.email)      return setErrorMessage("L'email est obligatoire.");
+
+    setSaving(true);
     try {
-      setSaving(true);
-      setErrorMessage("");
-      setSuccessMessage("");
-
-      const payload = cleanPayload(form);
-
-      if (!payload.first_name) {
-        setErrorMessage("Le prénom est obligatoire.");
-        return;
-      }
-
-      if (!payload.last_name) {
-        setErrorMessage("Le nom est obligatoire.");
-        return;
-      }
-
-      if (!payload.email) {
-        setErrorMessage("L’email est obligatoire.");
-        return;
-      }
-
       if (editingId) {
-        await updateOrganizationFidel(editingId, payload, session?.access_token);
+        await updateOrganizationFidel(editingId, payload);
         setSuccessMessage("Fidèle modifié avec succès.");
       } else {
-        const result = await createOrganizationFidel(payload, session?.access_token);
-        setSuccessMessage(
-          `Fidèle créé avec succès. Mot de passe provisoire : ${result.temporaryPassword}`
-        );
+        await createOrganizationFidel(payload);
+        // ✅ Plus de temporaryPassword dans la réponse
+        setSuccessMessage("Fidèle créé avec succès. Le mot de passe provisoire a été envoyé par email.");
       }
-
-      setForm(getEmptyForm());
-      setEditingId(null);
-      setShowForm(false);
+      handleCancel();
       await loadProfiles();
     } catch (error) {
-      console.error("Erreur sauvegarde fidèle organization :", error);
-      setErrorMessage(error?.message || "Impossible d’enregistrer le fidèle.");
+      console.error("[OrgProfilesPage] submit:", error);
+      setErrorMessage(error?.message || "Impossible d'enregistrer le fidèle.");
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id) => {
-    const confirmed = window.confirm("Supprimer ce fidèle ?");
-    if (!confirmed) return;
-
+    if (!window.confirm("Supprimer ce fidèle ?")) return;
+    setDeletingId(id);
     try {
-      setDeletingId(id);
-      setErrorMessage("");
-      setSuccessMessage("");
-
-      await deleteOrganizationFidel(id, session?.access_token);
-
+      await deleteOrganizationFidel(id);
       setSuccessMessage("Fidèle supprimé avec succès.");
-
-      if (editingId === id) {
-        handleCancel();
-      }
-
+      if (editingId === id) handleCancel();
       await loadProfiles();
     } catch (error) {
-      console.error("Erreur suppression fidèle organization :", error);
+      console.error("[OrgProfilesPage] delete:", error);
       setErrorMessage(error?.message || "Impossible de supprimer le fidèle.");
     } finally {
       setDeletingId(null);
@@ -463,215 +162,136 @@ export default function OrganizationProfilesPage() {
   };
 
   return (
-    <div style={styles.page}>
-      <div style={styles.container}>
-        <section style={styles.card}>
-          <div style={styles.header}>
-            <div style={styles.titleBlock}>
-              <h1 style={styles.title}>Gestion des fidèles</h1>
-              <p style={styles.subtitle}>
-                Consulte uniquement les fidèles rattachés à ton organisation,
-                ajoute de nouveaux comptes et gère leurs informations.
+    <div className="org-profiles-page">
+      <div className="org-profiles-container">
+        <div className="org-profiles-card">
+
+          {/* HEADER */}
+          <div className="org-profiles-header">
+            <div>
+              <h1 className="org-profiles-title">Gestion des fidèles</h1>
+              <p className="org-profiles-subtitle">
+                Fidèles rattachés à votre organisation uniquement.
               </p>
             </div>
-
-            <button style={styles.buttonPrimary} onClick={handleOpenCreate}>
-              Ajouter un fidèle
+            <button className="btn-primary" onClick={handleOpenCreate}>
+              + Ajouter un fidèle
             </button>
           </div>
 
-          <div style={styles.topStats}>
-            <StatCard
-              label="Total"
-              value={loading ? "..." : stats.total}
-              meta="Fidèles de l’organisation"
-            />
-            <StatCard
-              label="Approuvés"
-              value={loading ? "..." : stats.approved}
-              meta="Comptes disponibles"
-            />
-            <StatCard
-              label="En attente"
-              value={loading ? "..." : stats.pending}
-              meta="Comptes à suivre"
-            />
-            <StatCard
-              label="Rejetés"
-              value={loading ? "..." : stats.rejected}
-              meta="Comptes supprimés ou rejetés"
-            />
+          {/* STATS */}
+          <div className="org-stats-grid">
+            <StatCard label="Total"      value={loading ? "..." : stats.total}    meta="Fidèles" />
+            <StatCard label="Approuvés"  value={loading ? "..." : stats.approved} meta="Actifs" />
+            <StatCard label="En attente" value={loading ? "..." : stats.pending}  meta="À suivre" />
+            <StatCard label="Rejetés"    value={loading ? "..." : stats.rejected} />
           </div>
 
-          {errorMessage ? <div style={styles.errorBox}>{errorMessage}</div> : null}
-          {successMessage ? (
-            <div style={styles.successBox}>{successMessage}</div>
-          ) : null}
+          {errorMessage   && <div className="org-error">{errorMessage}</div>}
+          {successMessage && <div className="org-success">{successMessage}</div>}
 
-          <div style={styles.toolbar}>
-            <div style={styles.toolbarRow}>
-              <input
-                style={styles.input}
-                placeholder="Rechercher par prénom, nom, email, téléphone..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-
-              <select
-                style={styles.input}
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-              >
-                <option value="all">Tous les statuts</option>
-                <option value="approved">Approuvé</option>
-                <option value="pending">En attente</option>
-                <option value="rejected">Rejeté</option>
-              </select>
-            </div>
+          {/* TOOLBAR */}
+          <div className="org-toolbar">
+            <input type="text" placeholder="Rechercher par prénom, nom, email..."
+              value={search} onChange={(e) => setSearch(e.target.value)}
+              className="org-input" style={{ flex: 2 }} />
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="org-input">
+              <option value="all">Tous les statuts</option>
+              <option value="approved">Approuvé</option>
+              <option value="pending">En attente</option>
+              <option value="rejected">Rejeté</option>
+            </select>
           </div>
 
+          {/* FORM */}
           {showForm && (
-            <form style={styles.form} onSubmit={handleSubmit}>
-              <div style={styles.formGrid}>
-                <input
-                  style={styles.input}
-                  name="first_name"
-                  placeholder="Prénom"
-                  value={form.first_name}
-                  onChange={handleChange}
-                />
-                <input
-                  style={styles.input}
-                  name="last_name"
-                  placeholder="Nom"
-                  value={form.last_name}
-                  onChange={handleChange}
-                />
-                <input
-                  style={styles.input}
-                  name="email"
-                  placeholder="Email"
-                  value={form.email}
-                  onChange={handleChange}
-                />
-                <input
-                  style={styles.input}
-                  name="phone"
-                  placeholder="Téléphone"
-                  value={form.phone}
-                  onChange={handleChange}
-                />
-                <select
-                  style={styles.input}
-                  name="status"
-                  value={form.status}
-                  onChange={handleChange}
-                >
-                  <option value="approved">Approuvé</option>
-                  <option value="pending">En attente</option>
-                  <option value="rejected">Rejeté</option>
-                </select>
+            <form className="org-form" onSubmit={handleSubmit}>
+              <div className="org-form-grid">
+                <label className="org-form-label">
+                  Prénom *
+                  <input name="first_name" value={form.first_name} onChange={handleChange}
+                    placeholder="Prénom" className="org-input" required />
+                </label>
+                <label className="org-form-label">
+                  Nom *
+                  <input name="last_name" value={form.last_name} onChange={handleChange}
+                    placeholder="Nom" className="org-input" required />
+                </label>
+                <label className="org-form-label">
+                  Email *
+                  <input name="email" type="email" value={form.email} onChange={handleChange}
+                    placeholder="Email" className="org-input" required />
+                </label>
+                <label className="org-form-label">
+                  Téléphone
+                  <input name="phone" value={form.phone} onChange={handleChange}
+                    placeholder="Téléphone" className="org-input" />
+                </label>
+                <label className="org-form-label">
+                  Statut
+                  <select name="status" value={form.status} onChange={handleChange} className="org-input">
+                    <option value="approved">Approuvé</option>
+                    <option value="pending">En attente</option>
+                    <option value="rejected">Rejeté</option>
+                  </select>
+                </label>
               </div>
-
-              <div style={{ display: "flex", gap: 12 }}>
-                <button type="submit" style={styles.buttonPrimary} disabled={saving}>
-                  {saving
-                    ? editingId
-                      ? "Enregistrement..."
-                      : "Création..."
-                    : editingId
-                    ? "Enregistrer"
-                    : "Créer le fidèle"}
+              <div className="org-form-actions">
+                <button type="submit" className="btn-primary" disabled={saving}>
+                  {saving ? "Enregistrement..." : editingId ? "Enregistrer" : "Créer le fidèle"}
                 </button>
-                <button
-                  type="button"
-                  style={styles.buttonSecondary}
-                  onClick={handleCancel}
-                >
-                  Annuler
-                </button>
+                <button type="button" className="btn-secondary" onClick={handleCancel}>Annuler</button>
               </div>
             </form>
           )}
 
-          <div style={styles.tableWrap}>
-            <table style={styles.table}>
+          {/* TABLE */}
+          <div className="org-table-wrap">
+            <table className="org-table">
               <thead>
                 <tr>
-                  <th style={styles.th}>Prénom</th>
-                  <th style={styles.th}>Nom</th>
-                  <th style={styles.th}>Email</th>
-                  <th style={styles.th}>Téléphone</th>
-                  <th style={styles.th}>Statut</th>
-                  <th style={styles.th}>Création</th>
-                  <th style={styles.th}>Actions</th>
+                  <th className="org-th">Prénom</th>
+                  <th className="org-th">Nom</th>
+                  <th className="org-th">Email</th>
+                  <th className="org-th">Téléphone</th>
+                  <th className="org-th">Statut</th>
+                  <th className="org-th">Créé le</th>
+                  <th className="org-th">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr>
-                    <td style={styles.td} colSpan={7}>
-                      Chargement...
-                    </td>
-                  </tr>
+                  <tr><td colSpan={7} className="org-table-loading">Chargement...</td></tr>
                 ) : filteredProfiles.length === 0 ? (
-                  <tr>
-                    <td style={styles.empty} colSpan={7}>
-                      Aucun fidèle trouvé.
-                    </td>
-                  </tr>
+                  <tr><td colSpan={7} className="org-table-empty">Aucun fidèle trouvé.</td></tr>
                 ) : (
-                  filteredProfiles.map((item) => {
-                    const statusTheme = getStatusTheme(item.status);
-
-                    return (
-                      <tr key={item.id}>
-                        <td style={styles.td}>{item.first_name || "-"}</td>
-                        <td style={styles.td}>{item.last_name || "-"}</td>
-                        <td style={styles.td}>{item.email || "-"}</td>
-                        <td style={styles.td}>{item.phone || "-"}</td>
-                        <td style={styles.td}>
-                          <span
-                            style={{
-                              display: "inline-flex",
-                              padding: "6px 10px",
-                              borderRadius: 999,
-                              fontSize: 12,
-                              fontWeight: 700,
-                              ...statusTheme,
-                            }}
-                          >
-                            {statusTheme.label}
-                          </span>
-                        </td>
-                        <td style={styles.td}>{formatDateTime(item.created_at)}</td>
-                        <td style={styles.td}>
-                          <div style={styles.actions}>
-                            <button
-                              style={{ ...styles.iconButton, ...styles.editButton }}
-                              onClick={() => handleEdit(item)}
-                              title="Modifier"
-                            >
-                              ✏️
-                            </button>
-                            <button
-                              style={{ ...styles.iconButton, ...styles.dangerButton }}
-                              onClick={() => handleDelete(item.id)}
-                              disabled={deletingId === item.id}
-                              title="Supprimer"
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
+                  filteredProfiles.map((item) => (
+                    <tr key={item.id}>
+                      <td className="org-td">{item.first_name || "-"}</td>
+                      <td className="org-td">{item.last_name  || "-"}</td>
+                      <td className="org-td">{item.email      || "-"}</td>
+                      <td className="org-td">{item.phone      || "-"}</td>
+                      <td className="org-td"><StatusBadge status={item.status} /></td>
+                      <td className="org-td">{formatDate(item.created_at)}</td>
+                      <td className="org-td">
+                        <div className="org-row-actions">
+                          <button type="button" className="org-btn-icon org-btn-icon--edit"
+                            onClick={() => handleEdit(item)} title="Modifier">✏️</button>
+                          <button type="button" className="org-btn-icon org-btn-icon--delete"
+                            onClick={() => handleDelete(item.id)}
+                            disabled={deletingId === item.id} title="Supprimer">
+                            {deletingId === item.id ? "…" : "🗑️"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>
           </div>
-        </section>
+
+        </div>
       </div>
     </div>
   );

@@ -1,0 +1,95 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid;
+}
+
+.badge--pending {
+  background-color: #fefce8;
+  color: #854d0e;
+  border-color: #fde68a;
+}
+
+.badge--approved {
+  background-color: #f0fdf4;
+  color: #166534;
+  border-color: #86efac;
+}
+
+.badge--rejected {
+  background-color: #fef2f2;
+  color: #991b1b;
+  border-color: #fca5a5;
+}
+
+.badge--scheduled {
+  background-color: #eff6ff;
+  color: #1e40af;
+  border-color: #bfdbfe;
+}
+
+/* ===== Statuts moutons ===== */
+.badge--available {
+  background-color: #f0fdf4;
+  color: #166534;
+  border-color: #86efac;
+}
+
+.badge--assigned {
+  background-color: #eff6ff;
+  color: #1e40af;
+  border-color: #bfdbfe;
+}
+
+.badge--sacrificed {
+  background-color: #fdf4ff;
+  color: #6b21a8;
+  border-color: #e9d5ff;
+}
+
+.badge--missing {
+  background-color: #fff7ed;
+  color: #9a3412;
+  border-color: #fdba74;
+}
+
+/* ===== Statuts paiement ===== */
+.badge--unpaid {
+  background-color: #fef2f2;
+  color: #991b1b;
+  border-color: #fca5a5;
+}
+
+.badge--partial {
+  background-color: #fff7ed;
+  color: #9a3412;
+  border-color: #fdba74;
+}
+
+.badge--paid {
+  background-color: #f0fdf4;
+  color: #166534;
+  border-color: #86efac;
+}
+
+.badge--overpaid {
+  background-color: #fdf4ff;
+  color: #6b21a8;
+  border-color: #e9d5ff;
+}
+
+.badge--cancelled {
+  background-color: #f9fafb;
+  color: #6b7280;
+  border-color: #d1d5db;
+}
+
+.badge--unknown {
+  background-color: #f9fafb;
+  color: #6b7280;
+  border-color: #d1d5db;
+}

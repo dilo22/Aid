@@ -1,10 +1,120 @@
-export default function AdminProfilesModals({
-  styles,
+import { useEffect } from "react";
+import { SHEEP_SIZES } from "../../constants/sheep";
+import StatusBadge from "../ui/StatusBadge";
+import "../../styles/AdminProfilesModals.css";
+
+// ✅ Défini avant les composants parents
+const DetailCard = ({ label, value, full = false }) => (
+  <div className={`pmodal-detail-card${full ? " pmodal-detail-card--full" : ""}`}>
+    <div className="pmodal-detail-label">{label}</div>
+    <div className="pmodal-detail-value">{value ?? "-"}</div>
+  </div>
+);
+
+// ✅ Hook réutilisable pour Escape + scroll lock
+const useModalBehavior = (isOpen, onClose) => {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKey = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handleKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", handleKey);
+      document.body.style.overflow = "";
+    };
+  }, [isOpen, onClose]);
+};
+
+// ===== MODAL PROFIL =====
+const ProfileDetailModal = ({
   selectedProfile,
   setSelectedProfile,
+  selectedProfileSheep,
+  onEdit,
+  onApprove,
+  onOpenAssignModal,
+  getDisplayName,
+  getOrganizationLabel,
+  formatDateTime,
+}) => {
+  const close = () => setSelectedProfile(null);
+  useModalBehavior(!!selectedProfile, close);
+
+  if (!selectedProfile) return null;
+
+  return (
+    <div className="pmodal-overlay" onClick={close} role="dialog" aria-modal="true">
+      <div className="pmodal" onClick={(e) => e.stopPropagation()}>
+
+        <div className="pmodal-header">
+          <div>
+            <h2 className="pmodal-title">{getDisplayName(selectedProfile)}</h2>
+            <p className="pmodal-subtitle">{selectedProfile.role} • {selectedProfile.status}</p>
+          </div>
+          <button type="button" onClick={close} className="btn-secondary">Fermer</button>
+        </div>
+
+        <div className="pmodal-body">
+          <div className="pmodal-details-grid">
+            <DetailCard label="Prénom"       value={selectedProfile.first_name} />
+            <DetailCard label="Nom"          value={selectedProfile.last_name} />
+            <DetailCard label="Email"        value={selectedProfile.email} />
+            <DetailCard label="Téléphone"    value={selectedProfile.phone} />
+            <DetailCard label="Rôle"         value={selectedProfile.role} />
+            <DetailCard label="Statut"       value={<StatusBadge status={selectedProfile.status} />} />
+            <DetailCard label="Organisation" value={getOrganizationLabel(selectedProfile)} />
+            <DetailCard label="Type org."    value={selectedProfile.organization?.type} />
+            <DetailCard label="Mdp à changer" value={selectedProfile.must_change_password ? "Oui" : "Non"} />
+            <DetailCard label="Créé le"      value={formatDateTime(selectedProfile.created_at)} />
+            <DetailCard label="Modifié le"   value={formatDateTime(selectedProfile.updated_at)} />
+            <DetailCard label="ID"           value={selectedProfile.id} />
+
+            {/* Moutons attribués */}
+            <div className="pmodal-detail-card pmodal-detail-card--full">
+              <div className="pmodal-detail-label">Moutons attribués</div>
+              <div className="pmodal-detail-value">
+                {selectedProfileSheep.length === 0 ? (
+                  <span style={{ color: "#94a3b8", fontWeight: 400 }}>Aucun mouton attribué</span>
+                ) : (
+                  <div className="pmodal-sheep-tags">
+                    {selectedProfileSheep.map((s) => (
+                      <span key={s.id} className="pmodal-sheep-tag">
+                        #{s.number || "-"} • {s.color || "-"} • {s.size || "-"}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="pmodal-footer">
+          {selectedProfile.role === "fidel" && (
+            <button type="button" className="btn-icon btn-icon--sheep"
+              onClick={() => { const p = selectedProfile; close(); onOpenAssignModal(p); }}
+              title="Attribuer un mouton">🐏</button>
+          )}
+          <button type="button" className="btn-icon btn-icon--edit"
+            onClick={() => { onEdit(selectedProfile); close(); }}
+            title="Modifier">✏️</button>
+          {selectedProfile.status === "pending" && (
+            <button type="button" className="btn-icon btn-icon--approve"
+              onClick={async () => { await onApprove(selectedProfile.id); close(); }}
+              title="Valider">✓</button>
+          )}
+          <button type="button" onClick={close} className="btn-secondary">Fermer</button>
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
+// ===== MODAL ATTRIBUTION =====
+const AssignSheepModal = ({
   assignProfile,
   setAssignProfile,
-  selectedProfileSheep,
   filteredSheepForAssign,
   sheep,
   sheepSearch,
@@ -16,356 +126,132 @@ export default function AdminProfilesModals({
   sheepSizeFilter,
   setSheepSizeFilter,
   sheepColorOptions,
-  sheepSizeOptions,
   assigningSheepId,
   onAssignSheep,
-  onEdit,
-  onApprove,
-  onOpenAssignModal,
   getDisplayName,
-  getOrganizationLabel,
-  getStatusTheme,
-  getSheepStatusLabel,
-  formatDateTime,
-}) {
+}) => {
+  const close = () => setAssignProfile(null);
+  useModalBehavior(!!assignProfile, close);
+
+  if (!assignProfile) return null;
+
+  return (
+    <div className="pmodal-overlay" onClick={close} role="dialog" aria-modal="true">
+      <div className="pmodal pmodal--wide" onClick={(e) => e.stopPropagation()}>
+
+        <div className="pmodal-header">
+          <div>
+            <h2 className="pmodal-title">Attribuer un mouton</h2>
+            <p className="pmodal-subtitle">Fidèle : {getDisplayName(assignProfile)}</p>
+          </div>
+          <button type="button" onClick={close} className="btn-secondary">Fermer</button>
+        </div>
+
+        <div className="pmodal-body">
+          {/* FILTRES */}
+          <div className="pmodal-filters">
+            <input type="text" placeholder="Rechercher par numéro..."
+              value={sheepSearch} onChange={(e) => setSheepSearch(e.target.value)}
+              className="pmodal-input" />
+
+            <select value={sheepStatusFilter} onChange={(e) => setSheepStatusFilter(e.target.value)} className="pmodal-input">
+              <option value="available">Disponibles</option>
+              <option value="all">Tous</option>
+              <option value="assigned">Attribués</option>
+              <option value="sacrificed">Sacrifiés</option>
+              <option value="missing">Manquants</option>
+            </select>
+
+            {/* ✅ Couleurs issues des données */}
+            <select value={sheepColorFilter} onChange={(e) => setSheepColorFilter(e.target.value)} className="pmodal-input">
+              <option value="all">Toutes les couleurs</option>
+              {sheepColorOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+
+            {/* ✅ Tailles depuis la constante SHEEP_SIZES */}
+            <select value={sheepSizeFilter} onChange={(e) => setSheepSizeFilter(e.target.value)} className="pmodal-input">
+              <option value="all">Toutes les tailles</option>
+              {SHEEP_SIZES.map(({ value, label }) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="pmodal-count">
+            {filteredSheepForAssign.length} mouton(s) sur {sheep.length}
+          </div>
+
+          {/* LISTE */}
+          <div className="pmodal-sheep-list">
+            {filteredSheepForAssign.length === 0 ? (
+              <div className="pmodal-empty">Aucun mouton trouvé.</div>
+            ) : (
+              filteredSheepForAssign.map((item) => {
+                const alreadyAssigned = !!item.fidel_id;
+                return (
+                  <div key={item.id} className="pmodal-sheep-row">
+                    <div>
+                      <div className="pmodal-sheep-title">Mouton #{item.number || "-"}</div>
+                      <div className="pmodal-sheep-sub">
+                        {item.size || "-"} • {item.color || "-"} • {item.weight ? `${item.weight} kg` : "-"}
+                      </div>
+                    </div>
+                    <button type="button" className="btn-primary"
+                      onClick={() => onAssignSheep(item)}
+                      disabled={assigningSheepId === item.id || alreadyAssigned}>
+                      {assigningSheepId === item.id ? "Attribution..."
+                        : alreadyAssigned ? "Déjà attribué"
+                        : "Attribuer"}
+                    </button>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        <div className="pmodal-footer">
+          <button type="button" onClick={close} className="btn-secondary">Fermer</button>
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
+// ===== EXPORT PRINCIPAL =====
+export default function AdminProfilesModals(props) {
   return (
     <>
-      {selectedProfile && (
-        <div
-          style={styles.modalOverlay}
-          onClick={() => setSelectedProfile(null)}
-        >
-          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <div style={styles.modalHeader}>
-              <h2 style={styles.modalTitle}>
-                Profil - {getDisplayName(selectedProfile)}
-              </h2>
-              <button
-                type="button"
-                onClick={() => setSelectedProfile(null)}
-                style={styles.buttonSecondary}
-              >
-                Fermer
-              </button>
-            </div>
-
-            <div style={styles.modalBody}>
-              <div style={styles.detailsGrid}>
-                <DetailCard
-                  styles={styles}
-                  label="Prénom"
-                  value={selectedProfile.first_name || "-"}
-                />
-                <DetailCard
-                  styles={styles}
-                  label="Nom"
-                  value={selectedProfile.last_name || "-"}
-                />
-                <DetailCard
-                  styles={styles}
-                  label="Email"
-                  value={selectedProfile.email || "-"}
-                />
-                <DetailCard
-                  styles={styles}
-                  label="Téléphone"
-                  value={selectedProfile.phone || "-"}
-                />
-                <DetailCard
-                  styles={styles}
-                  label="Rôle"
-                  value={selectedProfile.role || "-"}
-                />
-                <DetailCard
-                  styles={styles}
-                  label="Statut"
-                  value={getStatusTheme(selectedProfile.status).label}
-                />
-                <DetailCard
-                  styles={styles}
-                  label="Organisation"
-                  value={getOrganizationLabel(selectedProfile)}
-                />
-                <DetailCard
-                  styles={styles}
-                  label="Type organisation"
-                  value={selectedProfile.organization?.type || "-"}
-                />
-                <DetailCard
-                  styles={styles}
-                  label="Mot de passe à changer"
-                  value={selectedProfile.must_change_password ? "Oui" : "Non"}
-                />
-                <DetailCard
-                  styles={styles}
-                  label="Créé le"
-                  value={formatDateTime(selectedProfile.created_at)}
-                />
-                <DetailCard
-                  styles={styles}
-                  label="Modifié le"
-                  value={formatDateTime(selectedProfile.updated_at)}
-                />
-                <DetailCard
-                  styles={styles}
-                  label="Créé par"
-                  value={selectedProfile.created_by || "-"}
-                />
-                <DetailCard
-                  styles={styles}
-                  label="Modifié par"
-                  value={selectedProfile.updated_by || "-"}
-                />
-                <DetailCard
-                  styles={styles}
-                  label="Supprimé par"
-                  value={selectedProfile.deleted_by || "-"}
-                />
-                <DetailCard
-                  styles={styles}
-                  label="ID profil"
-                  value={selectedProfile.id || "-"}
-                />
-
-                <div style={{ ...styles.detailCard, ...styles.sheepBlock }}>
-                  <div style={styles.detailLabel}>Moutons attribués</div>
-                  <div style={styles.detailValue}>
-                    {selectedProfileSheep.length === 0 ? (
-                      "Aucun mouton attribué"
-                    ) : (
-                      <div>
-                        {selectedProfileSheep.map((item) => (
-                          <span key={item.id} style={styles.sheepTag}>
-                            Mouton #{item.number || "-"} • Couleur :{" "}
-                            {item.color || "-"} • Taille : {item.size || "-"}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div style={styles.modalFooter}>
-              {selectedProfile.role === "fidel" && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const profileToAssign = selectedProfile;
-                    setSelectedProfile(null);
-                    onOpenAssignModal(profileToAssign);
-                  }}
-                  style={{ ...styles.iconButton, ...styles.sheepButton }}
-                  title="Attribuer un mouton"
-                  aria-label="Attribuer un mouton"
-                >
-                  🐏
-                </button>
-              )}
-
-              <button
-                type="button"
-                onClick={() => {
-                  onEdit(selectedProfile);
-                  setSelectedProfile(null);
-                }}
-                style={{ ...styles.iconButton, ...styles.editButton }}
-                title="Modifier"
-                aria-label="Modifier"
-              >
-                ✏️
-              </button>
-
-              {selectedProfile.status === "pending" && (
-                <button
-                  type="button"
-                  onClick={async () => {
-                    await onApprove(selectedProfile.id);
-                    setSelectedProfile(null);
-                  }}
-                  style={{ ...styles.iconButton, ...styles.successButton }}
-                  title="Valider"
-                  aria-label="Valider"
-                >
-                  ✓
-                </button>
-              )}
-
-              <button
-                type="button"
-                onClick={() => setSelectedProfile(null)}
-                style={styles.buttonSecondary}
-              >
-                Fermer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {assignProfile && (
-        <div style={styles.modalOverlay} onClick={() => setAssignProfile(null)}>
-          <div style={styles.assignModal} onClick={(e) => e.stopPropagation()}>
-            <div style={styles.modalHeader}>
-              <div>
-                <h2 style={styles.modalTitle}>Attribuer un mouton</h2>
-                <div
-                  style={{
-                    color: "#475569",
-                    marginTop: 6,
-                    fontWeight: 600,
-                  }}
-                >
-                  Fidèle : {getDisplayName(assignProfile)}
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setAssignProfile(null)}
-                style={styles.buttonSecondary}
-              >
-                Fermer
-              </button>
-            </div>
-
-            <div style={styles.modalBody}>
-              <div style={{ ...styles.detailCard, background: "#f8fafc" }}>
-                <div style={styles.detailLabel}>Fidèle sélectionné</div>
-                <div style={styles.detailValue}>
-                  {getDisplayName(assignProfile)}
-                </div>
-              </div>
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "2fr 1fr 1fr 1fr",
-                  gap: 12,
-                }}
-              >
-                <input
-                  type="text"
-                  placeholder="Rechercher par numéro de mouton..."
-                  value={sheepSearch}
-                  onChange={(e) => setSheepSearch(e.target.value)}
-                  style={styles.input}
-                />
-
-                <select
-                  value={sheepStatusFilter}
-                  onChange={(e) => setSheepStatusFilter(e.target.value)}
-                  style={styles.input}
-                >
-                  <option value="available">Disponibles non attribués</option>
-                  <option value="all">Tous</option>
-                  <option value="assigned">Attribués</option>
-                  <option value="sacrificed">Sacrifiés</option>
-                  <option value="missing">Manquants</option>
-                </select>
-
-                <select
-                  value={sheepColorFilter}
-                  onChange={(e) => setSheepColorFilter(e.target.value)}
-                  style={styles.input}
-                >
-                  <option value="all">Toutes les couleurs</option>
-                  {sheepColorOptions
-                    .filter((value) => value !== "all")
-                    .map((color) => (
-                      <option key={color} value={color}>
-                        {color}
-                      </option>
-                    ))}
-                </select>
-
-                <select
-                  value={sheepSizeFilter}
-                  onChange={(e) => setSheepSizeFilter(e.target.value)}
-                  style={styles.input}
-                >
-                  <option value="all">Toutes les tailles</option>
-                  {sheepSizeOptions
-                    .filter((value) => value !== "all")
-                    .map((size) => (
-                      <option key={size} value={size}>
-                        {size}
-                      </option>
-                    ))}
-                </select>
-              </div>
-
-              <div style={{ color: "#64748b", fontSize: 14, fontWeight: 600 }}>
-                {filteredSheepForAssign.length} mouton(s) trouvé(s) sur {sheep.length}
-              </div>
-
-              <div style={styles.sheepList}>
-                {filteredSheepForAssign.length === 0 ? (
-                  <div style={styles.empty}>Aucun mouton trouvé.</div>
-                ) : (
-                  filteredSheepForAssign.map((item) => {
-                    const alreadyAssigned =
-                      item.fidel_id !== null &&
-                      item.fidel_id !== undefined &&
-                      String(item.fidel_id).trim() !== "";
-
-                    return (
-                      <div key={item.id} style={styles.sheepRow}>
-                        <div style={styles.sheepMeta}>
-                          <div style={styles.sheepTitle}>
-                            Mouton #{item.number || "-"}
-                          </div>
-                          <div style={styles.sheepSub}>
-                            Statut : {getSheepStatusLabel(item.status)} •
-                            Taille : {item.size || "-"} • Couleur :{" "}
-                            {item.color || "-"}
-                          </div>
-                          <div style={styles.sheepSub}>
-                            Poids : {item.weight || "-"} kg • ID : {item.id}
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => onAssignSheep(item)}
-                          disabled={assigningSheepId === item.id || alreadyAssigned}
-                          style={styles.buttonPrimary}
-                        >
-                          {assigningSheepId === item.id
-                            ? "Attribution..."
-                            : alreadyAssigned
-                            ? "Déjà attribué"
-                            : "Attribuer"}
-                        </button>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-
-            <div style={styles.modalFooter}>
-              <button
-                type="button"
-                onClick={() => setAssignProfile(null)}
-                style={styles.buttonSecondary}
-              >
-                Fermer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ProfileDetailModal
+        selectedProfile={props.selectedProfile}
+        setSelectedProfile={props.setSelectedProfile}
+        selectedProfileSheep={props.selectedProfileSheep}
+        onEdit={props.onEdit}
+        onApprove={props.onApprove}
+        onOpenAssignModal={props.onOpenAssignModal}
+        getDisplayName={props.getDisplayName}
+        getOrganizationLabel={props.getOrganizationLabel}
+        formatDateTime={props.formatDateTime}
+      />
+      <AssignSheepModal
+        assignProfile={props.assignProfile}
+        setAssignProfile={props.setAssignProfile}
+        filteredSheepForAssign={props.filteredSheepForAssign}
+        sheep={props.sheep}
+        sheepSearch={props.sheepSearch}
+        setSheepSearch={props.setSheepSearch}
+        sheepStatusFilter={props.sheepStatusFilter}
+        setSheepStatusFilter={props.setSheepStatusFilter}
+        sheepColorFilter={props.sheepColorFilter}
+        setSheepColorFilter={props.setSheepColorFilter}
+        sheepSizeFilter={props.sheepSizeFilter}
+        setSheepSizeFilter={props.setSheepSizeFilter}
+        sheepColorOptions={props.sheepColorOptions}
+        assigningSheepId={props.assigningSheepId}
+        onAssignSheep={props.onAssignSheep}
+        getDisplayName={props.getDisplayName}
+      />
     </>
-  );
-}
-
-function DetailCard({ styles, label, value }) {
-  return (
-    <div style={styles.detailCard}>
-      <div style={styles.detailLabel}>{label}</div>
-      <div style={styles.detailValue}>{value}</div>
-    </div>
   );
 }

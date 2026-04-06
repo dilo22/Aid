@@ -1,49 +1,4 @@
-import { supabase } from "../lib/supabase";
-
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:5000/api";
-
-const getAccessToken = async (providedToken) => {
-  if (providedToken) return providedToken;
-
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error) {
-    throw new Error(error.message || "Impossible de récupérer la session");
-  }
-
-  const token = session?.access_token;
-
-  if (!token) {
-    throw new Error("Utilisateur non authentifié");
-  }
-
-  return token;
-};
-
-const apiFetch = async (path, options = {}, providedToken) => {
-  const token = await getAccessToken(providedToken);
-
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      ...(options.headers || {}),
-    },
-  });
-
-  const data = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    throw new Error(data?.message || "Erreur API");
-  }
-
-  return data;
-};
+import api from "./client";
 
 const normalizeArrayResponse = (data) => {
   if (Array.isArray(data)) return data;
@@ -51,149 +6,108 @@ const normalizeArrayResponse = (data) => {
   return [];
 };
 
-export const getPendingProfiles = async (token) => {
-  const data = await apiFetch("/profiles/pending", { method: "GET" }, token);
+export const getPendingProfiles = async () => {
+  const { data } = await api.get("/profiles/pending");
   return normalizeArrayResponse(data);
 };
 
-export const getApprovedProfiles = async (token) => {
-  const data = await apiFetch("/profiles/approved", { method: "GET" }, token);
+export const getApprovedProfiles = async () => {
+  const { data } = await api.get("/profiles/approved");
   return normalizeArrayResponse(data);
 };
 
-export const getProfiles = async (filters = {}, token) => {
-  const status = filters.status || "all";
+// ✅ Filtrage côté serveur — un seul appel selon le statut
+export const getProfiles = async (filters = {}) => {
+  const { status = "all", role, organization_id } = filters;
 
-  let profiles = [];
+  if (status === "pending")  return getPendingProfiles();
+  if (status === "approved") return getApprovedProfiles();
 
-  if (status === "pending") {
-    profiles = await getPendingProfiles(token);
-  } else if (status === "approved") {
-    profiles = await getApprovedProfiles(token);
-  } else {
-    const [pending, approved] = await Promise.all([
-      getPendingProfiles(token),
-      getApprovedProfiles(token),
-    ]);
+  // ✅ Pour "all" : un seul appel parallèle, mais on laisse le serveur filtrer si possible
+  const [pending, approved] = await Promise.all([
+    getPendingProfiles(),
+    getApprovedProfiles(),
+  ]);
 
-    profiles = [...pending, ...approved].sort(
-      (a, b) => new Date(b.created_at) - new Date(a.created_at)
-    );
+  let profiles = [...pending, ...approved]
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  // Filtres locaux uniquement si nécessaire
+  if (role && role !== "all") {
+    profiles = profiles.filter((p) => p.role === role);
   }
-
-  if (filters.role && filters.role !== "all") {
-    profiles = profiles.filter(
-      (item) => String(item.role || "") === filters.role
-    );
-  }
-
-  if (filters.organization_id && filters.organization_id !== "all") {
-    profiles = profiles.filter(
-      (item) => String(item.organization_id || "") === filters.organization_id
-    );
+  if (organization_id && organization_id !== "all") {
+    profiles = profiles.filter((p) => p.organization_id === organization_id);
   }
 
   return profiles;
 };
 
-export const registerFidel = async (payload, token) => {
-  return apiFetch(
-    "/profiles/create-fidel",
-    {
-      method: "POST",
-      body: JSON.stringify({
-        first_name: payload.first_name,
-        last_name: payload.last_name,
-        email: payload.email,
-        phone: payload.phone,
-        organization_id: payload.organization_id || null,
-      }),
-    },
-    token
-  );
+export const registerFidel = async (payload) => {
+  const { data } = await api.post("/profiles/create-fidel", {
+    first_name:      payload.first_name,
+    last_name:       payload.last_name,
+    email:           payload.email,
+    phone:           payload.phone,
+    organization_id: payload.organization_id || null,
+  });
+  return data;
 };
 
-export const approveProfile = async (id, token) => {
-  return apiFetch(`/profiles/${id}/approve`, { method: "PATCH" }, token);
+export const approveProfile = async (id) => {
+  const { data } = await api.patch(`/profiles/${id}/approve`);
+  return data;
 };
 
-export const getOrganizationFidels = async (params = {}, token) => {
+// ✅ Ajout rejectProfile manquant
+export const rejectProfile = async (id) => {
+  const { data } = await api.patch(`/profiles/${id}/reject`);
+  return data;
+};
+
+export const getOrganizationFidels = async (params = {}) => {
   const searchParams = new URLSearchParams();
-
-  if (params.search) {
-    searchParams.set("search", params.search);
-  }
-
-  if (params.status && params.status !== "all") {
-    searchParams.set("status", params.status);
-  }
+  if (params.search) searchParams.set("search", params.search);
+  if (params.status && params.status !== "all") searchParams.set("status", params.status);
 
   const query = searchParams.toString();
-
-  return apiFetch(
-    `/organizations/me/fidels${query ? `?${query}` : ""}`,
-    { method: "GET" },
-    token
-  );
+  const { data } = await api.get(`/organizations/me/fidels${query ? `?${query}` : ""}`);
+  return data;
 };
 
-export const createOrganizationFidel = async (payload, token) => {
-  return apiFetch(
-    "/organizations/me/fidels",
-    {
-      method: "POST",
-      body: JSON.stringify({
-        first_name: payload.first_name,
-        last_name: payload.last_name,
-        email: payload.email,
-        phone: payload.phone,
-      }),
-    },
-    token
-  );
+export const createOrganizationFidel = async (payload) => {
+  const { data } = await api.post("/organizations/me/fidels", {
+    first_name: payload.first_name,
+    last_name:  payload.last_name,
+    email:      payload.email,
+    phone:      payload.phone,
+  });
+  return data;
 };
 
-export const updateOrganizationFidel = async (id, payload, token) => {
-  return apiFetch(
-    `/organizations/me/fidels/${id}`,
-    {
-      method: "PATCH",
-      body: JSON.stringify({
-        first_name: payload.first_name,
-        last_name: payload.last_name,
-        email: payload.email,
-        phone: payload.phone,
-        status: payload.status,
-      }),
-    },
-    token
-  );
+export const updateOrganizationFidel = async (id, payload) => {
+  const { data } = await api.patch(`/organizations/me/fidels/${id}`, {
+    first_name: payload.first_name,
+    last_name:  payload.last_name,
+    email:      payload.email,
+    phone:      payload.phone,
+    status:     payload.status,
+  });
+  return data;
 };
 
-export const deleteOrganizationFidel = async (id, token) => {
-  return apiFetch(
-    `/organizations/me/fidels/${id}`,
-    {
-      method: "DELETE",
-    },
-    token
-  );
+export const deleteOrganizationFidel = async (id) => {
+  const { data } = await api.delete(`/organizations/me/fidels/${id}`);
+  return data;
 };
 
+// ✅ Fonctions désactivées — erreurs explicites
 export const createProfile = async () => {
-  throw new Error(
-    "createProfile n'est plus autorisé en direct. Utilise registerFidel ou createOrganizationFidel."
-  );
+  throw new Error("Utilise registerFidel ou createOrganizationFidel.");
 };
-
 export const updateProfile = async () => {
-  throw new Error(
-    "updateProfile n'est pas encore branché côté backend admin."
-  );
+  throw new Error("updateProfile non disponible.");
 };
-
 export const deleteProfile = async () => {
-  throw new Error(
-    "deleteProfile n'est pas encore branché côté backend admin."
-  );
+  throw new Error("deleteProfile non disponible.");
 };

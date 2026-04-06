@@ -10,12 +10,13 @@ export const createOrganization = async (payload) => {
   return data;
 };
 
+// ✅ PUT → PATCH
 export const updateOrganization = async (id, payload) => {
-  const { data } = await api.put(`/organizations/${id}`, payload);
+  const { data } = await api.patch(`/organizations/${id}`, payload);
   return data;
 };
 
 export const deleteOrganization = async (id) => {
-  const response = await api.delete(`/organizations/${id}`);
-  return response.data;
+  const { data } = await api.delete(`/organizations/${id}`);
+  return data;
 };

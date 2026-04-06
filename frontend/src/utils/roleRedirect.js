@@ -1,21 +1,5 @@
-export const getDashboardPath = (profile) => {
-  if (!profile) return "/login";
+// ✅ Ce fichier est redondant avec authGuards.js
+// Conservé uniquement pour la compatibilité avec les imports existants
+// → À terme, remplacer tous les imports de ce fichier par authGuards.js
 
-  if (profile.status === "pending") {
-    return "/pending-approval";
-  }
-
-  switch (profile.role) {
-    case "admin":
-      return "/admin";
-
-    case "organization":
-      return "/organization";
-
-    case "fidel":
-      return "/fidel";
-
-    default:
-      return "/";
-  }
-};
+export { getDashboardPathByRole as getDashboardPath } from "./authGuards";

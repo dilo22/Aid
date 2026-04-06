@@ -1,21 +1,31 @@
-const labels = {
-  pending: "En attente",
-  approved: "Validé",
-  rejected: "Refusé",
-  scheduled: "Planifié"
+import "../styles/StatusBadge.css";
+
+const LABELS = {
+  // Profils
+  pending:   "En attente",
+  approved:  "Validé",
+  rejected:  "Refusé",
+  scheduled: "Planifié",
+  // Moutons
+  available:  "Disponible",
+  assigned:   "Assigné",
+  sacrificed: "Sacrifié",
+  missing:    "Manquant",
+  // Paiements
+  unpaid:    "Non payé",
+  partial:   "Partiel",
+  paid:      "Payé",
+  overpaid:  "Surpayé",
+  cancelled: "Annulé",
 };
 
 const StatusBadge = ({ status }) => {
+  const knownStatuses = Object.keys(LABELS);
+  const modifier = knownStatuses.includes(status) ? status : "unknown";
+
   return (
-    <span
-      style={{
-        padding: "4px 10px",
-        borderRadius: 999,
-        border: "1px solid #ccc",
-        fontSize: 12
-      }}
-    >
-      {labels[status] || status}
+    <span className={`badge badge--${modifier}`}>
+      {LABELS[status] || status}
     </span>
   );
 };

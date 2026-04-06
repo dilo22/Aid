@@ -1,5 +1,17 @@
+import { useEffect } from "react";
+import "../../styles/AdminOrganizationsModal.css";
+
+// ✅ DetailCard défini avant le composant parent
+const DetailCard = ({ label, value, full = false, muted = false }) => (
+  <div className={`modal-detail-card${full ? " modal-detail-card--full" : ""}`}>
+    <div className="modal-detail-label">{label}</div>
+    <div className={`modal-detail-value${muted ? " modal-detail-value--muted" : ""}`}>
+      {value ?? "-"}
+    </div>
+  </div>
+);
+
 export default function AdminOrganizationsModal({
-  styles,
   selectedOrganization,
   selectedOrganizationProfiles,
   deletingId,
@@ -11,100 +23,65 @@ export default function AdminOrganizationsModal({
 }) {
   if (!selectedOrganization) return null;
 
+  const close = () => setSelectedOrganization(null);
+  const isDeleting = deletingId === selectedOrganization.id;
+  const statusTheme = getStatusTheme(selectedOrganization.is_active);
+
+  // ✅ Fermeture avec Escape
+  useEffect(() => {
+    const handleKey = (e) => { if (e.key === "Escape") close(); };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, []);
+
+  // ✅ Blocage du scroll en arrière-plan
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+
   return (
-    <div
-      style={styles.modalOverlay}
-      onClick={() => setSelectedOrganization(null)}
-    >
-      <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <div style={styles.modalHeader}>
-          <h2 style={styles.modalTitle}>
-            Organisation - {selectedOrganization.name || "-"}
+    <div className="modal-overlay" onClick={close} role="dialog" aria-modal="true">
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+
+        {/* HEADER */}
+        <div className="modal-header">
+          <h2 className="modal-title">
+            {selectedOrganization.name || "Organisation"}
           </h2>
-          <button
-            type="button"
-            onClick={() => setSelectedOrganization(null)}
-            style={styles.secondaryButton}
-          >
+          <button type="button" onClick={close} className="btn-secondary">
             Fermer
           </button>
         </div>
 
-        <div style={styles.modalBody}>
-          <div style={styles.detailsGrid}>
-            <DetailCard
-              styles={styles}
-              label="Nom"
-              value={selectedOrganization.name || "-"}
-            />
+        {/* BODY */}
+        <div className="modal-body">
+          <div className="modal-details-grid">
+            <DetailCard label="Nom"    value={selectedOrganization.name} />
+            <DetailCard label="Type"   value={selectedOrganization.type} />
+            <DetailCard label="Ville"  value={selectedOrganization.city} />
+            <DetailCard label="Adresse" value={selectedOrganization.address} />
+            <DetailCard label="Téléphone" value={selectedOrganization.phone} />
+            <DetailCard label="Email"  value={selectedOrganization.email} />
+            <DetailCard label="Statut" value={statusTheme.label} />
+            <DetailCard label="Fidèles rattachés" value={selectedOrganizationProfiles.length} />
+            <DetailCard label="ID" value={selectedOrganization.id} muted />
 
-            <DetailCard
-              styles={styles}
-              label="Type"
-              value={selectedOrganization.type || "-"}
-            />
-
-            <DetailCard
-              styles={styles}
-              label="Adresse"
-              value={selectedOrganization.address || "-"}
-            />
-
-            <DetailCard
-              styles={styles}
-              label="Ville"
-              value={selectedOrganization.city || "-"}
-            />
-
-            <DetailCard
-              styles={styles}
-              label="Téléphone"
-              value={selectedOrganization.phone || "-"}
-            />
-
-            <DetailCard
-              styles={styles}
-              label="Email"
-              value={selectedOrganization.email || "-"}
-            />
-
-            <DetailCard
-              styles={styles}
-              label="Statut"
-              value={getStatusTheme(selectedOrganization.is_active).label}
-            />
-
-            <DetailCard
-              styles={styles}
-              label="Nombre de fidèles"
-              value={selectedOrganizationProfiles.length}
-            />
-
-            <DetailCard
-              styles={styles}
-              label="ID organisation"
-              value={selectedOrganization.id || "-"}
-            />
-
-            <div style={{ ...styles.detailCard, ...styles.detailBlock }}>
-              <div style={styles.detailLabel}>Fidèles rattachés</div>
-              <div style={styles.detailValue}>
+            {/* Liste des fidèles */}
+            <div className="modal-detail-card modal-detail-card--full">
+              <div className="modal-detail-label">Fidèles</div>
+              <div className="modal-detail-value">
                 {selectedOrganizationProfiles.length === 0 ? (
-                  "Aucun fidèle rattaché"
+                  <span className="modal-detail-value--muted">Aucun fidèle rattaché</span>
                 ) : (
-                  <div style={styles.memberList}>
+                  <div className="modal-member-list">
                     {selectedOrganizationProfiles.map((profile) => (
-                      <div key={profile.id} style={styles.memberItem}>
-                        <div style={styles.memberName}>
+                      <div key={profile.id} className="modal-member-item">
+                        <div className="modal-member-name">
                           {getProfileDisplayName(profile)}
                         </div>
-                        <div style={styles.memberSub}>
-                          Prénom : {profile.first_name || "-"} • Nom :{" "}
-                          {profile.last_name || "-"}
-                        </div>
-                        <div style={styles.memberSub}>
-                          Email : {profile.email || "-"} • Téléphone :{" "}
-                          {profile.phone || "-"}
+                        <div className="modal-member-sub">
+                          {profile.email || "-"} • {profile.phone || "-"}
                         </div>
                       </div>
                     ))}
@@ -115,46 +92,28 @@ export default function AdminOrganizationsModal({
           </div>
         </div>
 
-        <div style={styles.modalFooter}>
-          <button
-            type="button"
-            onClick={() => onEdit(selectedOrganization)}
-            style={styles.primaryButton}
-          >
+        {/* FOOTER */}
+        <div className="modal-footer">
+          <button type="button" onClick={() => onEdit(selectedOrganization)} className="btn-primary">
             Modifier
           </button>
 
+          {/* ✅ Bouton danger visuellement distinct */}
           <button
             type="button"
-            onClick={() =>
-              onDelete(selectedOrganization.id, selectedOrganization.name)
-            }
-            style={styles.secondaryButton}
-            disabled={deletingId === selectedOrganization.id}
+            onClick={() => onDelete(selectedOrganization.id, selectedOrganization.name)}
+            className="btn-danger"
+            disabled={isDeleting}
           >
-            {deletingId === selectedOrganization.id
-              ? "Suppression..."
-              : "Supprimer"}
+            {isDeleting ? "Suppression..." : "Supprimer"}
           </button>
 
-          <button
-            type="button"
-            onClick={() => setSelectedOrganization(null)}
-            style={styles.secondaryButton}
-          >
+          <button type="button" onClick={close} className="btn-secondary">
             Fermer
           </button>
         </div>
-      </div>
-    </div>
-  );
-}
 
-function DetailCard({ styles, label, value }) {
-  return (
-    <div style={styles.detailCard}>
-      <div style={styles.detailLabel}>{label}</div>
-      <div style={styles.detailValue}>{value}</div>
+      </div>
     </div>
   );
 }

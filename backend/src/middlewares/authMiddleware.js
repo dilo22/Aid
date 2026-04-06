@@ -5,19 +5,16 @@ export const requireAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (!authHeader?.startsWith("Bearer ")) {
       throw new ApiError(401, "Token manquant");
     }
 
     const token = authHeader.split(" ")[1];
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser(token);
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
-      throw new ApiError(401, "Utilisateur non authentifié");
+      throw new ApiError(401, "Token invalide ou expiré");
     }
 
     const { data: profile, error: profileError } = await supabase
@@ -25,11 +22,7 @@ export const requireAuth = async (req, res, next) => {
       .select(`
         *,
         organization:organizations!profiles_organization_id_fkey(
-          id,
-          name,
-          type,
-          is_active,
-          deleted_at
+          id, name, type, is_active, deleted_at
         )
       `)
       .eq("id", user.id)
@@ -40,11 +33,26 @@ export const requireAuth = async (req, res, next) => {
       throw new ApiError(404, "Profil introuvable");
     }
 
+    // ✅ Vérification du statut
+    if (profile.status === "rejected") {
+      throw new ApiError(403, "Compte rejeté");
+    }
+
+    if (profile.status === "pending") {
+      throw new ApiError(403, "Compte en attente de validation");
+    }
+
+    // ✅ Vérification must_change_password
+    // Bloque toutes les routes sauf /auth/change-password
+    if (profile.must_change_password && !req.path.includes("/auth/change-password")) {
+      throw new ApiError(403, "Vous devez changer votre mot de passe");
+    }
+
+    // ✅ Vérification organisation
     if (profile.role === "organization" && profile.organization_id) {
       if (!profile.organization) {
         throw new ApiError(403, "Organisation introuvable");
       }
-
       if (!profile.organization.is_active || profile.organization.deleted_at) {
         throw new ApiError(403, "Organisation désactivée");
       }
@@ -60,8 +68,8 @@ export const requireAuth = async (req, res, next) => {
     };
 
     req.profile = profile;
-
     next();
+
   } catch (error) {
     next(error);
   }

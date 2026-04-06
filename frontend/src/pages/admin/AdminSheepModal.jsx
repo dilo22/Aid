@@ -1,22 +1,31 @@
 import { useEffect, useState } from "react";
 import Loader from "../../components/ui/Loader";
+import StatusBadge from "../ui/StatusBadge";
 import { createPayment, deletePayment } from "../../api/paymentsApi";
+import "../../styles/AdminSheepModal.css";
 
-const emptyPaymentForm = {
-  amount: "",
-  payment_type: "installment",
+// ✅ Défini avant le composant parent
+const DetailCard = ({ label, value, full = false }) => (
+  <div className={`smodal-detail-card${full ? " smodal-detail-card--full" : ""}`}>
+    <div className="smodal-detail-label">{label}</div>
+    <div className="smodal-detail-value">{value ?? "-"}</div>
+  </div>
+);
+
+const EMPTY_PAYMENT_FORM = {
+  amount:         "",
+  payment_type:   "installment",
   payment_method: "cash",
-  reference: "",
-  notes: "",
+  reference:      "",
+  notes:          "",
 };
 
-const normalizeMoney = (value) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
+const normalizeMoney = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
 };
 
 export default function AdminSheepModal({
-  styles,
   selectedSheep,
   selectedSheepAssignedProfile,
   deletingId,
@@ -39,259 +48,188 @@ export default function AdminSheepModal({
   remainingAmount,
   onPaymentsChanged,
 }) {
-  const [paymentForm, setPaymentForm] = useState(emptyPaymentForm);
-  const [savingPayment, setSavingPayment] = useState(false);
+  const [paymentForm,       setPaymentForm]       = useState(EMPTY_PAYMENT_FORM);
+  const [savingPayment,     setSavingPayment]     = useState(false);
   const [deletingPaymentId, setDeletingPaymentId] = useState(null);
-  const [paymentError, setPaymentError] = useState("");
+  const [paymentError,      setPaymentError]      = useState("");
 
+  // ✅ Reset form quand on change de mouton
   useEffect(() => {
-    setPaymentForm(emptyPaymentForm);
+    setPaymentForm(EMPTY_PAYMENT_FORM);
     setPaymentError("");
   }, [selectedSheep?.id]);
 
+  // ✅ Escape + scroll lock
+  useEffect(() => {
+    if (!selectedSheep) return;
+    const handleKey = (e) => { if (e.key === "Escape") setSelectedSheep(null); };
+    document.addEventListener("keydown", handleKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", handleKey);
+      document.body.style.overflow = "";
+    };
+  }, [selectedSheep]);
+
   if (!selectedSheep) return null;
 
-  const sheepStatusTheme = getStatusTheme(getRealSheepStatus(selectedSheep));
-  const paymentStatusTheme = getPaymentStatusTheme(
-    paymentsSummary?.paymentStatus || selectedSheep.payment_status || "unpaid"
-  );
+  const close = () => setSelectedSheep(null);
+  const realStatus       = getRealSheepStatus(selectedSheep);
+  const paymentStatus    = paymentsSummary?.paymentStatus || selectedSheep.payment_status || "unpaid";
+  const isDeleting       = deletingId === selectedSheep.id;
 
   const handlePaymentChange = (e) => {
     const { name, value } = e.target;
-    setPaymentForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setPaymentForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleCreatePayment = async (e) => {
     e.preventDefault();
-
-    if (!selectedSheep?.id) return;
+    setPaymentError("");
 
     if (!selectedSheep?.fidel_id) {
-      setPaymentError(
-        "Impossible d'ajouter un paiement à un mouton non attribué."
-      );
+      setPaymentError("Attribue d'abord ce mouton à un fidèle.");
       return;
     }
 
     const parsedAmount = Number(String(paymentForm.amount).replace(",", "."));
-
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      setPaymentError("Le montant du paiement est invalide.");
+      setPaymentError("Le montant est invalide.");
       return;
     }
 
     const currentRemaining = Math.max(normalizeMoney(remainingAmount), 0);
-
     if (currentRemaining <= 0) {
       setPaymentError("Ce mouton est déjà totalement payé.");
       return;
     }
 
-    let computedPaymentType = paymentForm.payment_type;
+    // ✅ Auto-détection paiement complet
+    const payment_type = Math.abs(parsedAmount - currentRemaining) < 0.0001
+      ? "full"
+      : paymentForm.payment_type;
 
-    // Si le montant correspond exactement au reste à payer,
-    // on force automatiquement le type "full".
-    if (Math.abs(parsedAmount - currentRemaining) < 0.0001) {
-      computedPaymentType = "full";
-    }
-
+    setSavingPayment(true);
     try {
-      setSavingPayment(true);
-      setPaymentError("");
-
       await createPayment({
-        sheep_id: selectedSheep.id,
-        profile_id: selectedSheep.fidel_id,
-        amount: parsedAmount,
-        payment_type: computedPaymentType,
+        sheep_id:       selectedSheep.id,
+        profile_id:     selectedSheep.fidel_id,
+        amount:         parsedAmount,
+        payment_type,
         payment_method: paymentForm.payment_method || null,
-        reference: paymentForm.reference || null,
-        notes: paymentForm.notes || null,
+        reference:      paymentForm.reference      || null,
+        notes:          paymentForm.notes          || null,
       });
-
-      setPaymentForm(emptyPaymentForm);
-
-      if (onPaymentsChanged) {
-        await onPaymentsChanged(selectedSheep.id);
-      }
+      setPaymentForm(EMPTY_PAYMENT_FORM);
+      await onPaymentsChanged?.(selectedSheep.id);
     } catch (error) {
-      console.error("Erreur création paiement :", error);
-      setPaymentError(
-        error?.response?.data?.message ||
-          error?.message ||
-          "Impossible d'ajouter le paiement."
-      );
+      console.error("[AdminSheepModal] createPayment:", error);
+      // ✅ error.message suffit — intercepteur axios normalise
+      setPaymentError(error?.message || "Impossible d'ajouter le paiement.");
     } finally {
       setSavingPayment(false);
     }
   };
 
   const handleDeletePayment = async (paymentId) => {
-    const confirmed = window.confirm("Supprimer ce paiement ?");
-    if (!confirmed) return;
-
+    if (!window.confirm("Supprimer ce paiement ?")) return;
+    setDeletingPaymentId(paymentId);
+    setPaymentError("");
     try {
-      setDeletingPaymentId(paymentId);
-      setPaymentError("");
-
       await deletePayment(paymentId);
-
-      if (onPaymentsChanged) {
-        await onPaymentsChanged(selectedSheep.id);
-      }
+      await onPaymentsChanged?.(selectedSheep.id);
     } catch (error) {
-      console.error("Erreur suppression paiement :", error);
-      setPaymentError(
-        error?.response?.data?.message ||
-          error?.message ||
-          "Impossible de supprimer le paiement."
-      );
+      console.error("[AdminSheepModal] deletePayment:", error);
+      setPaymentError(error?.message || "Impossible de supprimer le paiement.");
     } finally {
       setDeletingPaymentId(null);
     }
   };
 
   return (
-    <div style={styles.modalOverlay} onClick={() => setSelectedSheep(null)}>
-      <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <div style={styles.modalHeader}>
-          <h2 style={styles.modalTitle}>
-            Détail du mouton #{selectedSheep.number || "-"}
-          </h2>
-          <button
-            type="button"
-            onClick={() => setSelectedSheep(null)}
-            style={styles.secondaryButton}
-          >
-            Fermer
-          </button>
+    <div className="smodal-overlay" onClick={close} role="dialog" aria-modal="true">
+      <div className="smodal" onClick={(e) => e.stopPropagation()}>
+
+        {/* HEADER */}
+        <div className="smodal-header">
+          <h2 className="smodal-title">Mouton #{selectedSheep.number || "-"}</h2>
+          <button type="button" onClick={close} className="btn-secondary">Fermer</button>
         </div>
 
-        <div style={styles.modalBody}>
+        {/* BODY */}
+        <div className="smodal-body">
+
+          {/* Photo */}
           {selectedSheep.photo_url && (
-            <img
-              src={selectedSheep.photo_url}
+            <img src={selectedSheep.photo_url}
               alt={`Mouton ${selectedSheep.number || "-"}`}
-              style={styles.photoPreview}
-            />
+              className="smodal-photo" />
           )}
 
-          <div style={styles.detailsGrid}>
-            <DetailCard styles={styles} label="Numéro" value={selectedSheep.number || "-"} />
-            <DetailCard styles={styles} label="ID" value={selectedSheep.id || "-"} />
-            <DetailCard styles={styles} label="Poids" value={formatWeight(selectedSheep.weight)} />
-            <DetailCard styles={styles} label="Prix initial" value={formatPrice(selectedSheep.price)} />
-            <DetailCard styles={styles} label="Réduction" value={formatMoney(selectedSheep.discount_amount)} />
-            <DetailCard styles={styles} label="Prix final" value={formatMoney(expectedAmount)} />
-            <DetailCard styles={styles} label="Taille" value={selectedSheep.size || "-"} />
-            <DetailCard styles={styles} label="Couleur" value={selectedSheep.color || "-"} />
-            <DetailCard styles={styles} label="Statut du mouton" value={sheepStatusTheme.label} />
-            <DetailCard styles={styles} label="Statut paiement" value={paymentStatusTheme.label} />
-            <DetailCard styles={styles} label="Ajouté le" value={formatDateTime(selectedSheep.created_at)} />
-            <DetailCard styles={styles} label="Attribué le" value={formatDateTime(selectedSheep.assigned_at)} />
-            <DetailCard
-              styles={styles}
-              label="Fidèle attribué"
-              value={
-                selectedSheepAssignedProfile
-                  ? getProfileDisplayName(selectedSheepAssignedProfile)
-                  : "-"
-              }
-            />
-            <DetailCard styles={styles} label="ID du fidèle" value={selectedSheep.fidel_id || "-"} />
-            <DetailCard styles={styles} label="Total payé" value={formatMoney(paidAmount)} />
-            <DetailCard styles={styles} label="Reste à payer" value={formatMoney(remainingAmount)} />
-
+          {/* Détails */}
+          <div className="smodal-details-grid">
+            <DetailCard label="Numéro"          value={selectedSheep.number} />
+            <DetailCard label="Poids"            value={formatWeight(selectedSheep.weight)} />
+            <DetailCard label="Prix initial"     value={formatPrice(selectedSheep.price)} />
+            <DetailCard label="Réduction"        value={formatMoney(selectedSheep.discount_amount)} />
+            <DetailCard label="Prix final"       value={formatMoney(expectedAmount)} />
+            <DetailCard label="Taille"           value={selectedSheep.size} />
+            <DetailCard label="Couleur"          value={selectedSheep.color} />
+            <DetailCard label="Statut"           value={<StatusBadge status={realStatus} />} />
+            <DetailCard label="Statut paiement"  value={<StatusBadge status={paymentStatus} />} />
+            <DetailCard label="Total payé"       value={formatMoney(paidAmount)} />
+            <DetailCard label="Reste à payer"    value={formatMoney(remainingAmount)} />
+            <DetailCard label="Ajouté le"        value={formatDateTime(selectedSheep.created_at)} />
+            <DetailCard label="Attribué le"      value={formatDateTime(selectedSheep.assigned_at)} />
+            <DetailCard label="Fidèle"
+              value={selectedSheepAssignedProfile
+                ? getProfileDisplayName(selectedSheepAssignedProfile)
+                : "-"} />
             {selectedSheep.payment_due_date && (
-              <DetailCard
-                styles={styles}
-                label="Échéance paiement"
-                value={formatDateTime(selectedSheep.payment_due_date)}
-              />
+              <DetailCard label="Échéance" value={formatDateTime(selectedSheep.payment_due_date)} />
             )}
-
             {selectedSheep.notes && (
-              <div style={{ ...styles.detailCard, ...styles.detailBlock }}>
-                <div style={styles.detailLabel}>Notes mouton</div>
-                <div style={styles.detailValue}>{selectedSheep.notes}</div>
-              </div>
+              <DetailCard label="Notes mouton"   value={selectedSheep.notes}         full />
             )}
-
             {selectedSheep.payment_notes && (
-              <div style={{ ...styles.detailCard, ...styles.detailBlock }}>
-                <div style={styles.detailLabel}>Notes paiement</div>
-                <div style={styles.detailValue}>{selectedSheep.payment_notes}</div>
-              </div>
+              <DetailCard label="Notes paiement" value={selectedSheep.payment_notes} full />
             )}
           </div>
 
-          <div style={styles.paymentsSection}>
-            <h3 style={{ margin: 0, color: "#0f172a" }}>
+          {/* Ajouter un paiement */}
+          <div>
+            <h3 className="smodal-section-title" style={{ marginBottom: 12 }}>
               Ajouter un paiement
             </h3>
 
             {!selectedSheep.fidel_id ? (
-              <div style={styles.empty}>
+              <div className="smodal-empty">
                 Attribue d'abord ce mouton à un fidèle avant d'enregistrer un paiement.
               </div>
             ) : (
-              <form
-                onSubmit={handleCreatePayment}
-                style={{
-                  display: "grid",
-                  gap: 12,
-                  border: "1px solid #e2e8f0",
-                  borderRadius: 16,
-                  padding: 16,
-                  background: "#f8fafc",
-                }}
-              >
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-                    gap: 12,
-                  }}
-                >
-                  <label style={styles.label}>
-                    Montant
-                    <input
-                      name="amount"
-                      type="number"
-                      step="0.01"
-                      value={paymentForm.amount}
-                      onChange={handlePaymentChange}
-                      placeholder="100"
-                      style={styles.input}
-                      required
-                    />
+              <form onSubmit={handleCreatePayment} className="smodal-payment-form">
+                <div className="smodal-payment-grid">
+                  <label className="smodal-label">
+                    Montant *
+                    <input name="amount" type="number" step="0.01" min="0.01"
+                      value={paymentForm.amount} onChange={handlePaymentChange}
+                      placeholder="100" className="smodal-input" required />
                   </label>
 
-                  <label style={styles.label}>
+                  <label className="smodal-label">
                     Type
-                    <select
-                      name="payment_type"
-                      value={paymentForm.payment_type}
-                      onChange={handlePaymentChange}
-                      style={styles.input}
-                    >
+                    <select name="payment_type" value={paymentForm.payment_type}
+                      onChange={handlePaymentChange} className="smodal-input">
                       <option value="deposit">Acompte</option>
                       <option value="installment">Versement</option>
                       <option value="full">Paiement complet</option>
                     </select>
                   </label>
 
-                  <label style={styles.label}>
+                  <label className="smodal-label">
                     Méthode
-                    <select
-                      name="payment_method"
-                      value={paymentForm.payment_method}
-                      onChange={handlePaymentChange}
-                      style={styles.input}
-                    >
+                    <select name="payment_method" value={paymentForm.payment_method}
+                      onChange={handlePaymentChange} className="smodal-input">
                       <option value="cash">Espèces</option>
                       <option value="card">Carte</option>
                       <option value="transfer">Virement</option>
@@ -300,61 +238,31 @@ export default function AdminSheepModal({
                     </select>
                   </label>
 
-                  <label style={styles.label}>
+                  <label className="smodal-label">
                     Référence
-                    <input
-                      name="reference"
-                      value={paymentForm.reference}
+                    <input name="reference" value={paymentForm.reference}
                       onChange={handlePaymentChange}
-                      placeholder="Ex: reçu #123 ou virement banque"
-                      style={styles.input}
-                    />
+                      placeholder="Ex: reçu #123" className="smodal-input" />
                   </label>
 
-                  <label style={styles.label}>
+                  <label className="smodal-label">
                     Note
-                    <input
-                      name="notes"
-                      value={paymentForm.notes}
+                    <input name="notes" value={paymentForm.notes}
                       onChange={handlePaymentChange}
-                      placeholder="Ex: acompte versé sur place"
-                      style={styles.input}
-                    />
+                      placeholder="Ex: acompte versé sur place" className="smodal-input" />
                   </label>
                 </div>
 
-                {paymentError ? (
-                  <div
-                    style={{
-                      padding: 12,
-                      borderRadius: 12,
-                      background: "#fff1f2",
-                      border: "1px solid #fecdd3",
-                      color: "#9f1239",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {paymentError}
-                  </div>
-                ) : null}
+                {paymentError && (
+                  <div className="smodal-error">{paymentError}</div>
+                )}
 
-                <div
-                  style={{
-                    color: "#64748b",
-                    fontSize: 14,
-                    fontWeight: 600,
-                  }}
-                >
-                  Si le montant saisi correspond exactement au solde restant,
-                  le paiement sera automatiquement enregistré comme paiement complet.
-                </div>
+                <p className="smodal-payment-hint">
+                  Si le montant correspond exactement au solde restant, le paiement sera enregistré comme paiement complet.
+                </p>
 
-                <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                  <button
-                    type="submit"
-                    style={styles.primaryButton}
-                    disabled={savingPayment}
-                  >
+                <div className="smodal-payment-submit">
+                  <button type="submit" className="btn-primary" disabled={savingPayment}>
                     {savingPayment ? "Ajout..." : "Ajouter le paiement"}
                   </button>
                 </div>
@@ -362,108 +270,63 @@ export default function AdminSheepModal({
             )}
           </div>
 
-          <div style={styles.paymentsSection}>
-            <h3 style={{ margin: 0, color: "#0f172a" }}>
+          {/* Historique */}
+          <div>
+            <h3 className="smodal-section-title" style={{ marginBottom: 12 }}>
               Historique des paiements
             </h3>
 
             {paymentsLoading ? (
-              <Loader small={true} />
+              <Loader small />
             ) : payments.length === 0 ? (
-              <div style={styles.empty}>Aucun paiement enregistré.</div>
+              <div className="smodal-empty">Aucun paiement enregistré.</div>
             ) : (
-              payments.map((payment) => (
-                <div key={payment.id} style={styles.paymentItem}>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 12,
-                      alignItems: "center",
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    <div style={styles.paymentItemTitle}>
-                      {formatMoney(payment.amount)} • {payment.payment_type || "-"}
+              <div className="smodal-payment-list">
+                {payments.map((payment) => (
+                  <div key={payment.id} className="smodal-payment-item">
+                    <div className="smodal-payment-item-header">
+                      <span className="smodal-payment-item-title">
+                        {formatMoney(payment.amount)} • {payment.payment_type || "-"}
+                      </span>
+                      {/* ✅ Bouton danger distinct */}
+                      <button type="button" className="btn-danger--sm"
+                        onClick={() => handleDeletePayment(payment.id)}
+                        disabled={deletingPaymentId === payment.id}>
+                        {deletingPaymentId === payment.id ? "Suppression..." : "Supprimer"}
+                      </button>
                     </div>
-
-                    <button
-                      type="button"
-                      onClick={() => handleDeletePayment(payment.id)}
-                      style={styles.secondaryButton}
-                      disabled={deletingPaymentId === payment.id}
-                    >
-                      {deletingPaymentId === payment.id
-                        ? "Suppression..."
-                        : "Supprimer"}
-                    </button>
+                    <div className="smodal-payment-item-text">
+                      {formatDateTime(payment.payment_date)}
+                      {payment.payment_method && ` • ${payment.payment_method}`}
+                    </div>
+                    {payment.reference && (
+                      <div className="smodal-payment-item-text">Réf : {payment.reference}</div>
+                    )}
+                    {payment.notes && (
+                      <div className="smodal-payment-item-text">Note : {payment.notes}</div>
+                    )}
                   </div>
-
-                  <div style={styles.paymentItemText}>
-                    Date : {formatDateTime(payment.payment_date)}
-                  </div>
-
-                  {payment.payment_method && (
-                    <div style={styles.paymentItemText}>
-                      Méthode : {payment.payment_method}
-                    </div>
-                  )}
-
-                  {payment.reference && (
-                    <div style={styles.paymentItemText}>
-                      Référence : {payment.reference}
-                    </div>
-                  )}
-
-                  {payment.notes && (
-                    <div style={styles.paymentItemText}>
-                      Note : {payment.notes}
-                    </div>
-                  )}
-                </div>
-              ))
+                ))}
+              </div>
             )}
           </div>
         </div>
 
-        <div style={styles.modalFooter}>
-          <button
-            type="button"
-            onClick={() => {
-              onEdit(selectedSheep);
-            }}
-            style={styles.primaryButton}
-          >
+        {/* FOOTER */}
+        <div className="smodal-footer">
+          <button type="button" onClick={() => onEdit(selectedSheep)} className="btn-primary">
             Modifier
           </button>
-
-          <button
-            type="button"
+          {/* ✅ Bouton danger distinct */}
+          <button type="button"
             onClick={() => onDelete(selectedSheep.id, selectedSheep.number)}
-            style={styles.secondaryButton}
-            disabled={deletingId === selectedSheep.id}
-          >
-            {deletingId === selectedSheep.id ? "Suppression..." : "Supprimer"}
+            className="btn-danger" disabled={isDeleting}>
+            {isDeleting ? "Suppression..." : "Supprimer"}
           </button>
-
-          <button
-            type="button"
-            onClick={() => setSelectedSheep(null)}
-            style={styles.secondaryButton}
-          >
-            Fermer
-          </button>
+          <button type="button" onClick={close} className="btn-secondary">Fermer</button>
         </div>
-      </div>
-    </div>
-  );
-}
 
-function DetailCard({ styles, label, value }) {
-  return (
-    <div style={styles.detailCard}>
-      <div style={styles.detailLabel}>{label}</div>
-      <div style={styles.detailValue}>{value}</div>
+      </div>
     </div>
   );
 }

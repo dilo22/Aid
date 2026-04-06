@@ -1,7 +1,26 @@
 import Loader from "../../components/ui/Loader";
+import StatusBadge from "../ui/StatusBadge";
+import "../../styles/AdminProfiles.css";
+
+// ✅ Cohérent avec le backend
+const ROLES = [
+  { value: "fidel",        label: "Fidèle" },
+  { value: "organization", label: "Organisation" },
+  { value: "admin",        label: "Administrateur" },
+];
+
+const STATUSES = [
+  { value: "pending",  label: "En attente" },
+  { value: "approved", label: "Approuvé" },
+  { value: "rejected", label: "Rejeté" },
+];
+
+const RoleBadge = ({ role }) => {
+  const label = ROLES.find((r) => r.value === role)?.label || role;
+  return <span className={`role-badge role-badge--${role}`}>{label}</span>;
+};
 
 export default function AdminProfilesManagementCard({
-  styles,
   loading,
   saving,
   deletingId,
@@ -31,301 +50,209 @@ export default function AdminProfilesManagementCard({
   getAssignedSheepCountForProfile,
 }) {
   return (
-    <div style={styles.card}>
-      <div style={styles.header}>
-        <div style={styles.titleBlock}>
-          <h1 style={styles.title}>Gestion des profils</h1>
-          <p style={styles.subtitle}>
-            Recherche, filtres, validation, modification, suppression et attribution des moutons.
+    <div className="profiles-card">
+
+      {/* HEADER */}
+      <div className="profiles-header">
+        <div>
+          <h1 className="profiles-title">Gestion des profils</h1>
+          <p className="profiles-subtitle">
+            Recherche, filtres, validation, modification et attribution des moutons.
           </p>
         </div>
-
-        <button onClick={onOpenCreate} style={styles.buttonPrimary}>
+        <button onClick={onOpenCreate} className="btn-primary">
           + Nouveau profil
         </button>
       </div>
 
-      {errorMessage ? <div style={styles.errorBox}>{errorMessage}</div> : null}
+      {/* ERREUR */}
+      {errorMessage && <div className="profiles-error">{errorMessage}</div>}
 
-      <div style={styles.toolbar}>
-        <div style={styles.toolbarRow}>
-          <input
-            type="text"
-            placeholder="Rechercher par prénom, nom, email, téléphone, rôle, organisation..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={styles.input}
-          />
-
-          <select
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-            style={styles.input}
-          >
-            <option value="all">Tous les rôles</option>
-            <option value="fidel">Fidèles</option>
-            <option value="admin">Admins</option>
-            <option value="imam">Imams</option>
-            <option value="responsable">Responsables</option>
-            <option value="organization">Managers organisation</option>
-          </select>
-
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            style={styles.input}
-          >
-            <option value="all">Tous les statuts</option>
-            <option value="pending">En attente</option>
-            <option value="approved">Approuvé</option>
-            <option value="active">Actif</option>
-            <option value="inactive">Inactif</option>
-            <option value="blocked">Bloqué</option>
-          </select>
-        </div>
+      {/* TOOLBAR */}
+      <div className="profiles-toolbar">
+        <input
+          type="text"
+          placeholder="Rechercher par prénom, nom, email..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="profiles-input"
+          style={{ flex: 2, minWidth: 200 }}
+        />
+        {/* ✅ Rôles alignés avec le backend */}
+        <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="profiles-input">
+          <option value="all">Tous les rôles</option>
+          {ROLES.map(({ value, label }) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
+        {/* ✅ Statuts alignés avec le backend */}
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="profiles-input">
+          <option value="all">Tous les statuts</option>
+          {STATUSES.map(({ value, label }) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
       </div>
 
+      {/* FORMULAIRE */}
       {showForm && (
-        <form onSubmit={onSubmit} style={styles.form}>
-          <div style={styles.formGrid}>
-            <input
-              name="first_name"
-              value={form.first_name}
-              onChange={onChange}
-              placeholder="Prénom"
-              required
-              style={styles.input}
-            />
+        <form onSubmit={onSubmit} className="profiles-form">
+          <div className="profiles-form-grid">
+            <label className="profiles-label">
+              Prénom *
+              <input name="first_name" value={form.first_name} onChange={onChange}
+                placeholder="Prénom" required className="profiles-input" />
+            </label>
 
-            <input
-              name="last_name"
-              value={form.last_name}
-              onChange={onChange}
-              placeholder="Nom"
-              required
-              style={styles.input}
-            />
+            <label className="profiles-label">
+              Nom *
+              <input name="last_name" value={form.last_name} onChange={onChange}
+                placeholder="Nom" required className="profiles-input" />
+            </label>
 
-            <input
-              name="email"
-              type="email"
-              value={form.email}
-              onChange={onChange}
-              placeholder="Email"
-              style={styles.input}
-            />
+            <label className="profiles-label">
+              Email
+              <input name="email" type="email" value={form.email} onChange={onChange}
+                placeholder="Email" className="profiles-input" />
+            </label>
 
-            <input
-              name="phone"
-              value={form.phone}
-              onChange={onChange}
-              placeholder="Téléphone"
-              style={styles.input}
-            />
+            <label className="profiles-label">
+              Téléphone
+              <input name="phone" value={form.phone} onChange={onChange}
+                placeholder="Téléphone" className="profiles-input" />
+            </label>
 
-            <select
-              name="role"
-              value={form.role}
-              onChange={onChange}
-              style={styles.input}
-            >
-              <option value="fidel">Fidèle</option>
-              <option value="admin">Admin</option>
-              <option value="imam">Imam</option>
-              <option value="responsable">Responsable</option>
-              <option value="organization">Manager organisation</option>
-            </select>
+            {/* ✅ Rôles backend uniquement */}
+            <label className="profiles-label">
+              Rôle
+              <select name="role" value={form.role} onChange={onChange} className="profiles-input">
+                {ROLES.map(({ value, label }) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </label>
 
-            <select
-              name="status"
-              value={form.status}
-              onChange={onChange}
-              style={styles.input}
-            >
-              <option value="pending">En attente</option>
-              <option value="approved">Approuvé</option>
-              <option value="active">Actif</option>
-              <option value="inactive">Inactif</option>
-              <option value="blocked">Bloqué</option>
-            </select>
+            {/* ✅ Statuts backend uniquement */}
+            <label className="profiles-label">
+              Statut
+              <select name="status" value={form.status} onChange={onChange} className="profiles-input">
+                {STATUSES.map(({ value, label }) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </label>
 
-            <select
-              name="organization_id"
-              value={form.organization_id}
-              onChange={onChange}
-              style={styles.input}
-            >
-              <option value="">Sélectionner une organisation</option>
-              {organizations.map((org) => (
-                <option key={org.id} value={org.id}>
-                  {org.name} {org.type ? `(${org.type})` : ""}
-                </option>
-              ))}
-            </select>
+            <label className="profiles-label">
+              Organisation
+              <select name="organization_id" value={form.organization_id} onChange={onChange} className="profiles-input">
+                <option value="">Aucune organisation</option>
+                {organizations.map((org) => (
+                  <option key={org.id} value={org.id}>
+                    {org.name}{org.type ? ` (${org.type})` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-            <label style={styles.checkboxWrap}>
-              <input
-                type="checkbox"
-                name="must_change_password"
-                checked={form.must_change_password}
-                onChange={onChange}
-              />
+            <label className="profiles-checkbox-label">
+              <input type="checkbox" name="must_change_password"
+                checked={form.must_change_password} onChange={onChange} />
               Changer le mot de passe à la prochaine connexion
             </label>
           </div>
 
-          <div style={{ display: "flex", gap: 12 }}>
-            <button type="submit" style={styles.buttonPrimary} disabled={saving}>
-              {saving
-                ? "Enregistrement..."
-                : editingId
-                ? "Enregistrer"
-                : "Créer"}
+          <div className="profiles-form-actions">
+            <button type="submit" className="btn-primary" disabled={saving}>
+              {saving ? "Enregistrement..." : editingId ? "Enregistrer" : "Créer"}
             </button>
-
-            <button
-              type="button"
-              onClick={onCancel}
-              style={styles.buttonSecondary}
-            >
+            <button type="button" onClick={onCancel} className="btn-secondary">
               Annuler
             </button>
           </div>
         </form>
       )}
 
-      <div style={styles.tableWrap}>
-        <table style={styles.table}>
+      {/* TABLE */}
+      <div className="profiles-table-wrap">
+        <table className="profiles-table">
           <thead>
             <tr>
-              <th style={styles.th}>Prénom</th>
-              <th style={styles.th}>Nom</th>
-              <th style={styles.th}>Email</th>
-              <th style={styles.th}>Téléphone</th>
-              <th style={styles.th}>Rôle</th>
-              <th style={styles.th}>Organisation</th>
-              <th style={styles.th}>Nb moutons</th>
-              <th style={styles.th}>Actions</th>
+              <th className="profiles-th">Prénom</th>
+              <th className="profiles-th">Nom</th>
+              <th className="profiles-th">Email</th>
+              <th className="profiles-th">Téléphone</th>
+              <th className="profiles-th">Rôle</th>
+              <th className="profiles-th">Organisation</th>
+              <th className="profiles-th">Moutons</th>
+              <th className="profiles-th">Actions</th>
             </tr>
           </thead>
-
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7}>
-                  <Loader small={true} />
-                  <div
-                    style={{
-                      textAlign: "center",
-                      fontSize: "0.9rem",
-                      color: "#232121",
-                    }}
-                  >
-                    Chargement des données...
-                  </div>
+                {/* ✅ colSpan correct — 8 colonnes */}
+                <td colSpan={8} className="profiles-loading-cell">
+                  <Loader small />
+                  <div>Chargement des données...</div>
                 </td>
               </tr>
             ) : profiles.length === 0 ? (
               <tr>
-                <td colSpan={8} style={styles.empty}>
+                <td colSpan={8} className="profiles-empty">
                   Aucun profil trouvé.
                 </td>
               </tr>
             ) : (
-              profiles.map((item) => {
-                const canAssignSheep = item.role === "fidel";
+              profiles.map((item) => (
+                <tr key={item.id} className="profiles-row" onClick={() => onRowClick(item)}>
+                  <td className="profiles-td">{item.first_name || "-"}</td>
+                  <td className="profiles-td">{item.last_name  || "-"}</td>
+                  <td className="profiles-td">{item.email      || "-"}</td>
+                  <td className="profiles-td">{item.phone      || "-"}</td>
+                  <td className="profiles-td"><RoleBadge role={item.role} /></td>
+                  <td className="profiles-td">{getOrganizationLabel(item)}</td>
+                  <td className="profiles-td">{getAssignedSheepCountForProfile(item.id)}</td>
+                  <td className="profiles-td">
+                    <div className="profiles-actions">
 
-                return (
-                  <tr
-                    key={item.id}
-                    style={styles.clickableRow}
-                    onClick={() => onRowClick(item)}
-                  >
-                    <td style={styles.td}>{item.first_name || "-"}</td>
-                    <td style={styles.td}>{item.last_name || "-"}</td>
-                    <td style={styles.td}>{item.email || "-"}</td>
-                    <td style={styles.td}>{item.phone || "-"}</td>
-                    <td style={styles.td}>{item.role || "-"}</td>
-                    <td style={styles.td}>{getOrganizationLabel(item)}</td>
-                    <td style={styles.td}>
-                      {getAssignedSheepCountForProfile(item.id)}
-                    </td>
-                    <td style={styles.tdActions}>
-                      <div style={styles.actions}>
-                        {canAssignSheep && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onOpenAssignModal(item);
-                            }}
-                            style={{
-                              ...styles.iconButton,
-                              ...styles.sheepButton,
-                            }}
-                            title="Attribuer un mouton"
-                            aria-label="Attribuer un mouton"
-                          >
-                            🐏
-                          </button>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onEdit(item);
-                          }}
-                          style={{
-                            ...styles.iconButton,
-                            ...styles.editButton,
-                          }}
-                          title="Modifier"
-                          aria-label="Modifier"
-                        >
-                          ✏️
+                      {item.role === "fidel" && (
+                        <button type="button"
+                          className="profiles-btn-icon profiles-btn-icon--sheep"
+                          onClick={(e) => { e.stopPropagation(); onOpenAssignModal(item); }}
+                          title="Attribuer un mouton" aria-label="Attribuer un mouton">
+                          🐏
                         </button>
+                      )}
 
-                        {item.status === "pending" && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onApprove(item.id);
-                            }}
-                            style={{
-                              ...styles.iconButton,
-                              ...styles.successButton,
-                            }}
-                            disabled={approvingId === item.id}
-                            title="Valider"
-                            aria-label="Valider"
-                          >
-                            {approvingId === item.id ? "…" : "✓"}
-                          </button>
-                        )}
+                      <button type="button"
+                        className="profiles-btn-icon profiles-btn-icon--edit"
+                        onClick={(e) => { e.stopPropagation(); onEdit(item); }}
+                        title="Modifier" aria-label="Modifier">
+                        ✏️
+                      </button>
 
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDelete(item.id);
-                          }}
-                          style={{
-                            ...styles.iconButton,
-                            ...styles.dangerButton,
-                          }}
-                          disabled={deletingId === item.id}
-                          title="Supprimer"
-                          aria-label="Supprimer"
-                        >
-                          {deletingId === item.id ? "…" : "🗑️"}
+                      {item.status === "pending" && (
+                        <button type="button"
+                          className="profiles-btn-icon profiles-btn-icon--approve"
+                          onClick={(e) => { e.stopPropagation(); onApprove(item.id); }}
+                          disabled={approvingId === item.id}
+                          title="Valider" aria-label="Valider">
+                          {approvingId === item.id ? "…" : "✓"}
                         </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
+                      )}
+
+                      <button type="button"
+                        className="profiles-btn-icon profiles-btn-icon--delete"
+                        onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
+                        disabled={deletingId === item.id}
+                        title="Supprimer" aria-label="Supprimer">
+                        {deletingId === item.id ? "…" : "🗑️"}
+                      </button>
+
+                    </div>
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>

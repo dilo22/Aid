@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getSheepList,
   createSheep as createSheepApi,
@@ -8,75 +8,90 @@ import {
 import { DEFAULT_SHEEP_FILTERS } from "../constants/sheep";
 
 export function useSheepManagement() {
-  const [sheep, setSheep] = useState([]);
-  const [filters, setFilters] = useState(DEFAULT_SHEEP_FILTERS);
+  const [sheep, setSheep]     = useState([]);
+  const [filters, setFiltersState] = useState(DEFAULT_SHEEP_FILTERS);
   const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+
+  // ✅ Ref pour toujours avoir les filtres à jour dans fetchAll
+  // sans le rajouter comme dépendance et créer une boucle
+  const filtersRef = useRef(filters);
+  filtersRef.current = filters;
 
   const fetchAll = useCallback(async (customFilters) => {
     setLoading(true);
+    setError(null);
 
     try {
-      const appliedFilters = customFilters ?? filters;
+      const appliedFilters = customFilters ?? filtersRef.current;
       const data = await getSheepList(appliedFilters);
 
-      const normalizedSheep = Array.isArray(data?.items)
-        ? data.items
-        : Array.isArray(data)
-        ? data
+      const normalized = Array.isArray(data?.items) ? data.items
+        : Array.isArray(data) ? data
         : [];
 
-      setSheep(normalizedSheep);
-      return normalizedSheep;
-    } catch (error) {
-      console.error("useSheepManagement error:", error);
+      setSheep(normalized);
+      return normalized;
+    } catch (err) {
+      console.error("[useSheepManagement] fetchAll error:", err);
+      setError(err.message || "Erreur lors du chargement des moutons");
       setSheep([]);
       return [];
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, []); // ✅ Plus de dépendance sur filters → pas de boucle
 
+  // ✅ Rechargement uniquement quand les filtres changent
   useEffect(() => {
-    fetchAll();
-  }, [fetchAll]);
+    fetchAll(filtersRef.current);
+  }, [filters, fetchAll]);
 
-  const refresh = useCallback(async () => {
-    return fetchAll();
-  }, [fetchAll]);
+  const refresh = useCallback(() => fetchAll(), [fetchAll]);
 
   const updateFilters = useCallback((nextFilters) => {
-    setFilters((prev) => {
-      if (typeof nextFilters === "function") {
-        return nextFilters(prev);
-      }
-
-      return {
-        ...prev,
-        ...nextFilters,
-      };
-    });
+    setFiltersState((prev) =>
+      typeof nextFilters === "function"
+        ? nextFilters(prev)
+        : { ...prev, ...nextFilters }
+    );
   }, []);
 
   const resetFilters = useCallback(() => {
-    setFilters(DEFAULT_SHEEP_FILTERS);
+    setFiltersState(DEFAULT_SHEEP_FILTERS);
   }, []);
 
   const createSheep = useCallback(async (payload) => {
-    const result = await createSheepApi(payload);
-    await fetchAll();
-    return result;
+    try {
+      const result = await createSheepApi(payload);
+      await fetchAll();
+      return result;
+    } catch (err) {
+      console.error("[useSheepManagement] createSheep error:", err);
+      throw err; // ✅ Laisse le composant gérer l'affichage de l'erreur
+    }
   }, [fetchAll]);
 
   const updateSheep = useCallback(async (id, payload) => {
-    const result = await updateSheepApi(id, payload);
-    await fetchAll();
-    return result;
+    try {
+      const result = await updateSheepApi(id, payload);
+      await fetchAll();
+      return result;
+    } catch (err) {
+      console.error("[useSheepManagement] updateSheep error:", err);
+      throw err;
+    }
   }, [fetchAll]);
 
   const deleteSheep = useCallback(async (id) => {
-    const result = await deleteSheepApi(id);
-    await fetchAll();
-    return result;
+    try {
+      const result = await deleteSheepApi(id);
+      await fetchAll();
+      return result;
+    } catch (err) {
+      console.error("[useSheepManagement] deleteSheep error:", err);
+      throw err;
+    }
   }, [fetchAll]);
 
   return {
@@ -85,6 +100,7 @@ export function useSheepManagement() {
     setFilters: updateFilters,
     resetFilters,
     loading,
+    error,       // ✅ exposé pour affichage dans les composants
     refresh,
     createSheep,
     updateSheep,

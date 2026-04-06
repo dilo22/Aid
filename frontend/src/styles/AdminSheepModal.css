@@ -1,0 +1,281 @@
+/* ===== OVERLAY ===== */
+.smodal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+}
+
+/* ===== MODAL ===== */
+.smodal {
+  background: #ffffff;
+  border-radius: 24px;
+  width: 100%;
+  max-width: 900px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+  overflow: hidden;
+}
+
+/* ===== HEADER ===== */
+.smodal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.smodal-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+/* ===== BODY ===== */
+.smodal-body {
+  overflow-y: auto;
+  padding: 24px;
+  flex: 1;
+  display: grid;
+  gap: 24px;
+  align-content: start;
+}
+
+/* ===== PHOTO ===== */
+.smodal-photo {
+  width: 100%;
+  max-height: 280px;
+  object-fit: cover;
+  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+}
+
+/* ===== DETAILS GRID ===== */
+.smodal-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.smodal-detail-card {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.smodal-detail-card--full { grid-column: 1 / -1; }
+
+.smodal-detail-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+  margin-bottom: 5px;
+}
+
+.smodal-detail-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+  word-break: break-word;
+}
+
+/* ===== SECTION TITRE ===== */
+.smodal-section-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+/* ===== PAYMENT FORM ===== */
+.smodal-payment-form {
+  display: grid;
+  gap: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 18px;
+  background: #f8fafc;
+}
+
+.smodal-payment-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.smodal-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.smodal-input {
+  padding: 10px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 14px;
+  background: #fff;
+  color: #0f172a;
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.smodal-input:focus { border-color: #3b82f6; }
+
+.smodal-payment-hint {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.smodal-payment-submit {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ===== ERROR ===== */
+.smodal-error {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #dc2626;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ===== PAYMENT HISTORY ===== */
+.smodal-payment-list { display: grid; gap: 10px; }
+
+.smodal-payment-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 14px 16px;
+  background: #fff;
+  display: grid;
+  gap: 6px;
+}
+
+.smodal-payment-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.smodal-payment-item-title {
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.smodal-payment-item-text {
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* ===== EMPTY ===== */
+.smodal-empty {
+  text-align: center;
+  padding: 24px;
+  color: #94a3b8;
+  font-size: 14px;
+  border: 1px dashed #e5e7eb;
+  border-radius: 12px;
+}
+
+/* ===== FOOTER ===== */
+.smodal-footer {
+  display: flex;
+  gap: 10px;
+  padding: 16px 24px;
+  border-top: 1px solid #e5e7eb;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+/* ===== BUTTONS ===== */
+.btn-primary {
+  border: none;
+  border-radius: 12px;
+  padding: 11px 18px;
+  background: #111827;
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.btn-primary:hover    { background: #1f2937; }
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.btn-secondary {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 11px 18px;
+  background: #fff;
+  color: #374151;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-secondary:hover { background: #f1f5f9; }
+
+.btn-danger {
+  border: 1px solid #fca5a5;
+  border-radius: 12px;
+  padding: 11px 18px;
+  background: #fef2f2;
+  color: #dc2626;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-danger:hover    { background: #fee2e2; }
+.btn-danger:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.btn-danger--sm {
+  border: 1px solid #fca5a5;
+  border-radius: 8px;
+  padding: 6px 12px;
+  background: #fef2f2;
+  color: #dc2626;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.btn-danger--sm:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 640px) {
+  .smodal-payment-grid { grid-template-columns: 1fr; }
+}

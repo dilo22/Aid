@@ -1,0 +1,11 @@
+.sheep-page      { min-height: 100vh; background: #f8fafc; padding: 24px; }
+.sheep-container { max-width: 1450px; margin: 0 auto; display: grid; gap: 20px; }
+.sheep-error {
+  padding: 12px 16px;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: 12px;
+  color: #dc2626;
+  font-size: 14px;
+  font-weight: 600;
+}

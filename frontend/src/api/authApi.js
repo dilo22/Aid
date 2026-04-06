@@ -5,8 +5,10 @@ export const getMe = async () => {
   return data;
 };
 
-export const changePassword = async (password) => {
+// ✅ Envoi du mot de passe actuel requis par le backend
+export const changePassword = async ({ current_password, password }) => {
   const { data } = await api.post("/auth/change-password", {
+    current_password,
     password,
   });
   return data;

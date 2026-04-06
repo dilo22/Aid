@@ -217,24 +217,33 @@ export const getPaymentsBySheepId = async (req, res, next) => {
 export const getPaymentsByProfileId = async (req, res, next) => {
   try {
     const { profileId } = req.params;
+    if (!profileId) throw new ApiError(400, "ID du profil manquant");
+    if (!isValidUUID(profileId)) throw new ApiError(400, "ID invalide");
 
-    if (!profileId) {
-      throw new ApiError(400, "ID du profil manquant");
+    // ✅ Un fidèle ne peut voir que SES paiements
+    if (req.user.role === "fidel" && req.user.id !== profileId) {
+      throw new ApiError(403, "Accès refusé");
+    }
+
+    // ✅ Une organisation ne peut voir que les paiements de SES fidèles
+    if (req.user.role === "organization") {
+      const { data: profile } = await supabase
+        .from("profiles").select("organization_id").eq("id", profileId).maybeSingle();
+      if (!profile || profile.organization_id !== req.user.organization_id) {
+        throw new ApiError(403, "Accès refusé");
+      }
     }
 
     const { data, error } = await supabase
-      .from("sheep_payments")
-      .select("*")
-      .eq("profile_id", profileId)
+      .from("sheep_payments").select("*").eq("profile_id", profileId)
       .order("payment_date", { ascending: false });
 
     if (error) {
-      throw new ApiError(400, error.message);
+      console.error("[GET_PAYMENTS_PROFILE]", error);
+      throw new ApiError(500, "Erreur serveur");
     }
 
-    res.json({
-      items: data || [],
-    });
+    res.json({ items: data || [] });
   } catch (error) {
     next(error);
   }
@@ -242,24 +251,12 @@ export const getPaymentsByProfileId = async (req, res, next) => {
 
 export const createPayment = async (req, res, next) => {
   try {
-    const {
-      sheep_id,
-      profile_id,
-      amount,
-      payment_method,
-      payment_date,
-      payment_type,
-      reference,
-      notes,
-    } = req.body;
+    const { sheep_id, profile_id, amount, payment_method, payment_date, payment_type, reference, notes } = req.body;
 
-    if (!sheep_id) {
-      throw new ApiError(400, "Le mouton est obligatoire");
-    }
-
-    if (!profile_id) {
-      throw new ApiError(400, "Le profil est obligatoire");
-    }
+    if (!sheep_id)   throw new ApiError(400, "Le mouton est obligatoire");
+    if (!profile_id) throw new ApiError(400, "Le profil est obligatoire");
+    if (!isValidUUID(sheep_id))   throw new ApiError(400, "ID mouton invalide");
+    if (!isValidUUID(profile_id)) throw new ApiError(400, "ID profil invalide");
 
     validatePaymentType(payment_type);
     validatePaymentMethod(payment_method);
@@ -379,28 +376,24 @@ export const updatePayment = async (req, res, next) => {
 export const deletePayment = async (req, res, next) => {
   try {
     const { id } = req.params;
-
-    if (!id) {
-      throw new ApiError(400, "ID du paiement manquant");
-    }
+    if (!id) throw new ApiError(400, "ID du paiement manquant");
+    if (!isValidUUID(id)) throw new ApiError(400, "ID invalide");
 
     const existingPayment = await getPaymentById(id);
 
+    // ✅ Soft delete — on garde la traçabilité financière
     const { error } = await supabase
       .from("sheep_payments")
-      .delete()
+      .update({ deleted_at: new Date().toISOString(), deleted_by: req.user.id })
       .eq("id", id);
 
     if (error) {
-      throw new ApiError(400, error.message);
+      console.error("[DELETE_PAYMENT]", error);
+      throw new ApiError(500, "Erreur serveur");
     }
 
     const summary = await buildSheepPaymentSummary(existingPayment.sheep_id);
-
-    res.json({
-      message: "Paiement supprimé avec succès",
-      summary,
-    });
+    res.json({ message: "Paiement supprimé avec succès", summary });
   } catch (error) {
     next(error);
   }
