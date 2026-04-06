@@ -1,5 +1,5 @@
 import Loader from "../../components/ui/Loader";
-import StatusBadge from "../ui/StatusBadge";
+import StatusBadge from "../../components/ui/StatusBadge";
 import { SHEEP_SIZES, SHEEP_STATUSES } from "../../constants/sheep";
 import "../../styles/AdminSheepCard.css";
 

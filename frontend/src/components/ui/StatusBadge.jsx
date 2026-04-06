@@ -1,4 +1,4 @@
-import "../styles/StatusBadge.css";
+import "../../styles/StatusBadge.css";
 
 const LABELS = {
   // Profils

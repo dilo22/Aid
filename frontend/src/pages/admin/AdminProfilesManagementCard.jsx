@@ -1,5 +1,5 @@
 import Loader from "../../components/ui/Loader";
-import StatusBadge from "../ui/StatusBadge";
+import StatusBadge from "../../components/ui/StatusBadge";
 import "../../styles/AdminProfiles.css";
 
 // ✅ Cohérent avec le backend

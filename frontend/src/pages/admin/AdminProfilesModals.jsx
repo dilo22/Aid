@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { SHEEP_SIZES } from "../../constants/sheep";
-import StatusBadge from "../ui/StatusBadge";
+import StatusBadge from "../../components/ui/StatusBadge";
 import "../../styles/AdminProfilesModals.css";
 
 // ✅ Défini avant les composants parents

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import Loader from "../../components/ui/Loader";
-import StatusBadge from "../ui/StatusBadge";
+import StatusBadge from "../../components/ui/StatusBadge";
 import { createPayment, deletePayment } from "../../api/paymentsApi";
 import "../../styles/AdminSheepModal.css";
 

@@ -1,6 +1,6 @@
-import { useAuth } from "../../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import "../../styles/PendingApprovalPage.css";
+import { useAuth } from "../contexts/AuthContext";
+import "../styles/PendingApprovalPage.css";
 
 const STEPS = [
   "Votre demande est transmise à votre organisation",

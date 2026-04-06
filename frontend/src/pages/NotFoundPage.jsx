@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import "../../styles/NotFoundPage.css";
+import "../styles/NotFoundPage.css";
 
 const SheepSVG = () => (
   <svg width="200" height="200" viewBox="0 0 200 200" style={{ overflow: "visible" }}>
