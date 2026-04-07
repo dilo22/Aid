@@ -26,5 +26,5 @@ export const DEFAULT_SHEEP_FILTERS = {
   sortBy:    "created_at",
   sortOrder: "desc",
   page:      1,
-  limit:     20, // ✅ aligné avec le backend (max 100)
+  limit:     100, // ✅ aligné avec le backend (max 100)
 };

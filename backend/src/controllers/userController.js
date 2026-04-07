@@ -265,7 +265,7 @@ export const assignSheepToFidel = async (req, res, next) => {
     // ✅ Anti race-condition : update conditionnel sur status=available
     const { data: sheep, error: updateError } = await supabase
       .from("sheep")
-      .update({ status: "assigned" })
+      .update({ status: "assigned" , fidel_id: userId })
       .eq("id", sheepId)
       .eq("status", "available") // ← atomique : échoue si déjà pris
       .select()
