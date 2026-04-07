@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import helmet from "helmet";
+// import helmet from "helmet";  // ← commenter temporairement
 import routes from "./routes/index.js";
 import { errorMiddleware } from "./middlewares/errorMiddleware.js";
 import { globalLimiter } from "./middlewares/rateLimitMiddleware.js";
@@ -9,6 +9,7 @@ const app = express();
 
 const allowedOrigins = [
   process.env.FRONTEND_URL,
+  "https://aid-adha.space",
   "http://localhost:5173",
 ].filter(Boolean);
 
@@ -27,7 +28,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 
-app.use(helmet());
+// app.use(helmet());  // ← commenter temporairement
 app.use(express.json({ limit: "10kb" }));
 app.use(globalLimiter);
 
