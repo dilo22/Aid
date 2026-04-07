@@ -8,13 +8,11 @@ import {
 import { DEFAULT_SHEEP_FILTERS } from "../constants/sheep";
 
 export function useSheepManagement() {
-  const [sheep, setSheep]     = useState([]);
+  const [sheep, setSheep] = useState([]);
   const [filters, setFiltersState] = useState(DEFAULT_SHEEP_FILTERS);
   const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState(null);
+  const [error, setError] = useState(null);
 
-  // ✅ Ref pour toujours avoir les filtres à jour dans fetchAll
-  // sans le rajouter comme dépendance et créer une boucle
   const filtersRef = useRef(filters);
   filtersRef.current = filters;
 
@@ -26,8 +24,10 @@ export function useSheepManagement() {
       const appliedFilters = customFilters ?? filtersRef.current;
       const data = await getSheepList(appliedFilters);
 
-      const normalized = Array.isArray(data?.items) ? data.items
-        : Array.isArray(data) ? data
+      const normalized = Array.isArray(data?.items)
+        ? data.items
+        : Array.isArray(data)
+        ? data
         : [];
 
       setSheep(normalized);
@@ -40,9 +40,8 @@ export function useSheepManagement() {
     } finally {
       setLoading(false);
     }
-  }, []); // ✅ Plus de dépendance sur filters → pas de boucle
+  }, []);
 
-  // ✅ Rechargement uniquement quand les filtres changent
   useEffect(() => {
     fetchAll(filtersRef.current);
   }, [filters, fetchAll]);
@@ -68,7 +67,7 @@ export function useSheepManagement() {
       return result;
     } catch (err) {
       console.error("[useSheepManagement] createSheep error:", err);
-      throw err; // ✅ Laisse le composant gérer l'affichage de l'erreur
+      throw err;
     }
   }, [fetchAll]);
 
@@ -100,30 +99,10 @@ export function useSheepManagement() {
     setFilters: updateFilters,
     resetFilters,
     loading,
-    error,       // ✅ exposé pour affichage dans les composants
+    error,
     refresh,
     createSheep,
     updateSheep,
     deleteSheep,
   };
 }
-
-const [meta, setMeta] = useState({ total: 0, totalPages: 1 });
-
-const fetchAll = useCallback(async (customFilters) => {
-  setLoading(true);
-  try {
-    const appliedFilters = customFilters ?? filtersRef.current;
-    const data = await getSheepList(appliedFilters);
-    const normalized = Array.isArray(data?.items) ? data.items : [];
-    setSheep(normalized);
-    setMeta(data?.meta ?? { total: 0, totalPages: 1 }); // ✅
-    return normalized;
-  } catch (err) {
-    setError(err.message);
-    setSheep([]);
-    return [];
-  } finally {
-    setLoading(false);
-  }
-}, []);
