@@ -35,40 +35,54 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  useEffect(() => {
-    let mounted = true;
+useEffect(() => {
+  let mounted = true;
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!mounted) return;
-      setSession(session ?? null);
-      if (session) await fetchProfile();
-      if (mounted) setLoading(false);
-    });
+  const init = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!mounted) return;
-        // Ignore INITIAL_SESSION : déjà géré par getSession() ci-dessus
-        if (event === "INITIAL_SESSION") return;
+    if (!mounted) return;
 
-        setSession(session ?? null);
+    setSession(session ?? null);
 
-        if (event === "SIGNED_OUT") {
-          setProfile(null);
-          return;
-        }
+    if (session) {
+      await fetchProfile();
+    }
 
-        if (event === "SIGNED_IN" && session) {
-          await fetchProfile();
-        }
-      }
-    );
+    if (mounted) {
+      setLoading(false);
+    }
+  };
 
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, []);
+  init();
+
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange((event, session) => {
+    if (!mounted) return;
+
+    if (event === "INITIAL_SESSION") return;
+
+    setSession(session ?? null);
+
+    if (event === "SIGNED_OUT") {
+      setProfile(null);
+      setLoading(false);
+      return;
+    }
+
+    if (event === "SIGNED_IN" && session) {
+      Promise.resolve().then(() => {
+        if (mounted) fetchProfile();
+      });
+    }
+  });
+
+  return () => {
+    mounted = false;
+    subscription.unsubscribe();
+  };
+}, []);
 
   const signOut = async () => {
     await supabase.auth.signOut();
