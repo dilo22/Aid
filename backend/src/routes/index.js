@@ -4,8 +4,7 @@ import organizationRoutes from "./organizationRoutes.js";
 import userRoutes from "./userRoutes.js";
 import sheepRoutes from "./sheepRoutes.js";
 import paymentRoutes from "./paymentRoutes.js";
-import { authLimiter } from "../app.js"; // ✅ import du limiter strict
-
+import { authLimiter } from "../middlewares/rateLimiters.js";
 const router = Router();
 
 // ✅ Rate limit strict sur les routes d'authentification

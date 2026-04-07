@@ -1,39 +1,41 @@
-app.use(cors({
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import routes from "./routes/index.js";
+import { errorMiddleware } from "./middlewares/errorMiddleware.js";
+import { globalLimiter } from "./middlewares/rateLimiters.js";
+
+const app = express();
+
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  "http://localhost:5173",
+].filter(Boolean);
+
+const corsOptions = {
   origin: (origin, callback) => {
-    const allowedOrigins = [
-      process.env.FRONTEND_URL,
-      "http://localhost:5173",
-    ].filter(Boolean);
-
-    const isVercelPreview =
-      origin && /^https:\/\/aid-.*\.vercel\.app$/.test(origin);
-
-    if (!origin || allowedOrigins.includes(origin) || isVercelPreview) {
+    if (!origin || allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
-
     return callback(new Error(`CORS blocked for origin: ${origin}`));
   },
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
-}));
+};
 
-app.options(/.*/, cors({
-  origin: (origin, callback) => {
-    const allowedOrigins = [
-      process.env.FRONTEND_URL,
-      "http://localhost:5173",
-    ].filter(Boolean);
+app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
 
-    const isVercelPreview =
-      origin && /^https:\/\/aid-.*\.vercel\.app$/.test(origin);
+app.use(helmet());
+app.use(express.json({ limit: "10kb" }));
+app.use(globalLimiter);
 
-    if (!origin || allowedOrigins.includes(origin) || isVercelPreview) {
-      return callback(null, true);
-    }
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
 
-    return callback(new Error(`CORS blocked for origin: ${origin}`));
-  },
-  credentials: true,
-}));
+app.use("/api", routes);
+app.use(errorMiddleware);
+
+export default app;
