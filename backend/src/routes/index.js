@@ -4,10 +4,10 @@ import organizationRoutes from "./organizationRoutes.js";
 import userRoutes from "./userRoutes.js";
 import sheepRoutes from "./sheepRoutes.js";
 import paymentRoutes from "./paymentRoutes.js";
-import { authLimiter } from "../middlewares/rateLimiters.js";
+import { authLimiter } from "../middlewares/rateLimitMiddleware.js";
+
 const router = Router();
 
-// ✅ Rate limit strict sur les routes d'authentification
 router.use("/auth", authLimiter, authRoutes);
 router.use("/organizations", organizationRoutes);
 router.use("/profiles", userRoutes);

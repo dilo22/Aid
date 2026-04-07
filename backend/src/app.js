@@ -3,7 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import routes from "./routes/index.js";
 import { errorMiddleware } from "./middlewares/errorMiddleware.js";
-import { globalLimiter } from "./middlewares/rateLimiters.js";
+import { globalLimiter } from "./middlewares/rateLimitMiddleware.js";
 
 const app = express();
 
