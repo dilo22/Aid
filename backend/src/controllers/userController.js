@@ -24,7 +24,14 @@ const insertAuditLog = async ({ table_name, record_id, action, organization_id, 
   });
   if (error) console.error("[AUDIT_LOG] error:", error);
 };
-
+// ✅ Select sans FK inexistantes
+const PROFILE_SELECT = `
+  id, email, first_name, last_name, phone, role, status,
+  organization_id, must_change_password,
+  created_at, updated_at, deleted_at,
+  created_by, updated_by, deleted_by,
+  organization:organizations!profiles_organization_id_fkey(id, name, type, is_active)
+`;
 export const getPendingUsers = async (req, res, next) => {
   try {
     const { data, error } = await supabase
