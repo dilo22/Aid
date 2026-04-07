@@ -107,3 +107,23 @@ export function useSheepManagement() {
     deleteSheep,
   };
 }
+
+const [meta, setMeta] = useState({ total: 0, totalPages: 1 });
+
+const fetchAll = useCallback(async (customFilters) => {
+  setLoading(true);
+  try {
+    const appliedFilters = customFilters ?? filtersRef.current;
+    const data = await getSheepList(appliedFilters);
+    const normalized = Array.isArray(data?.items) ? data.items : [];
+    setSheep(normalized);
+    setMeta(data?.meta ?? { total: 0, totalPages: 1 }); // ✅
+    return normalized;
+  } catch (err) {
+    setError(err.message);
+    setSheep([]);
+    return [];
+  } finally {
+    setLoading(false);
+  }
+}, []);
