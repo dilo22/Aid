@@ -25,18 +25,6 @@ const insertAuditLog = async ({ table_name, record_id, action, organization_id, 
   if (error) console.error("[AUDIT_LOG] error:", error);
 };
 
-// ✅ Sélect réutilisable pour éviter la duplication
-const PROFILE_SELECT = `
-  id, email, first_name, last_name, phone, role, status,
-  organization_id, must_change_password,
-  created_at, updated_at, deleted_at,
-  created_by, updated_by, deleted_by,
-  organization:organizations!profiles_organization_id_fkey(id, name, type, is_active),
-  created_by_profile:profiles!profiles_created_by_fkey(id, first_name, last_name, email, role),
-  updated_by_profile:profiles!profiles_updated_by_fkey(id, first_name, last_name, email, role),
-  deleted_by_profile:profiles!profiles_deleted_by_fkey(id, first_name, last_name, email, role)
-`;
-
 export const getPendingUsers = async (req, res, next) => {
   try {
     const { data, error } = await supabase
