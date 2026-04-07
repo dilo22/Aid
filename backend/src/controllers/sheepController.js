@@ -81,8 +81,6 @@ const parseNullableDate = (value, fieldLabel = "Date invalide") => {
 
   return date.toISOString();
 };
-
-// ✅ Dans getSheepList — plafonner le limit et filtrer par organisation
 export const getSheepList = async (req, res, next) => {
   try {
     const {
@@ -92,7 +90,6 @@ export const getSheepList = async (req, res, next) => {
     } = req.query;
 
     const parsedPage  = Math.max(parseInt(page,  10) || 1,  1);
-    // ✅ Limite max à 100 pour éviter les requêtes massives
     const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 100);
     const from = (parsedPage - 1) * parsedLimit;
     const to   = from + parsedLimit - 1;
@@ -102,8 +99,10 @@ export const getSheepList = async (req, res, next) => {
 
     let query = supabase.from("sheep").select("*", { count: "exact" });
 
-    // ✅ Filtrage par organisation si l'user n'est pas admin
-    if (req.user.role !== "admin" && req.user.organization_id) {
+    // ✅ Filtrage selon le rôle
+    if (req.user.role === "fidel") {
+      query = query.eq("fidel_id", req.user.id);
+    } else if (req.user.role !== "admin" && req.user.organization_id) {
       query = query.eq("organization_id", req.user.organization_id);
     }
 
