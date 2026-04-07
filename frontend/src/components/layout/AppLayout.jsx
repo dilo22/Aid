@@ -4,7 +4,6 @@ import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import Loader from "../ui/Loader";
 import "../../styles/AppLayout.css";
 
-
 const ROLE_LABELS = {
   admin:        "Administrateur",
   organization: "Responsable organisation",
@@ -13,10 +12,10 @@ const ROLE_LABELS = {
 
 const NAV_ITEMS = {
   admin: [
-    { to: "/admin",                end: true,  icon: "📊", label: "Dashboard" },
-    { to: "/admin/organizations",  end: false, icon: "🕌", label: "Organisations" },
-    { to: "/admin/sheep",          end: false, icon: "🐏", label: "Moutons" },
-    { to: "/admin/profiles",       end: false, icon: "👥", label: "Utilisateurs" },
+    { to: "/admin",               end: true,  icon: "📊", label: "Dashboard" },
+    { to: "/admin/organizations", end: false, icon: "🕌", label: "Organisations" },
+    { to: "/admin/sheep",         end: false, icon: "🐏", label: "Moutons" },
+    { to: "/admin/profiles",      end: false, icon: "👥", label: "Utilisateurs" },
   ],
   organization: [
     { to: "/organization",         end: true,  icon: "📊", label: "Tableau de bord" },
@@ -30,43 +29,37 @@ const NAV_ITEMS = {
   ],
 };
 
-const getRoleLabel  = (role) => ROLE_LABELS[role] || role || "Utilisateur";
-
-const getDisplayName = (profile) => {
-  const firstName = profile?.first_name?.trim() || "";
-  const lastName  = profile?.last_name?.trim()  || "";
-  const rebuilt   = `${firstName} ${lastName}`.trim();
-  return rebuilt || profile?.email || "Utilisateur";
+const SECTION_LABELS = {
+  admin:        "Administration",
+  organization: "Organisation",
+  fidel:        "Mon espace",
 };
 
-const navLinkStyle     = ({ isActive }) => ({ ...styles.navLink,    ...(isActive ? styles.activeNavLink    : {}) });
-const profileLinkStyle = ({ isActive }) => ({ ...styles.profileBox, ...(isActive ? styles.profileBoxActive : {}) });
+const getRoleLabel   = (role) => ROLE_LABELS[role] || role || "Utilisateur";
+const getDisplayName = (profile) => {
+  const name = `${profile?.first_name?.trim() || ""} ${profile?.last_name?.trim() || ""}`.trim();
+  return name || profile?.email || "Utilisateur";
+};
 
 const AppLayout = () => {
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
   const [loggingOut, setLoggingOut] = useState(false);
 
-  // ✅ Garde si profil pas encore chargé
   if (!profile) return <Loader />;
 
   const navItems = NAV_ITEMS[profile.role] || [];
 
-  // ✅ Gestion d'erreur + état de chargement
   const handleLogout = async () => {
     if (loggingOut) return;
-
-    // ✅ Confirmation avant déconnexion
-    const confirmed = window.confirm("Voulez-vous vraiment vous déconnecter ?");
-    if (!confirmed) return;
+    if (!window.confirm("Voulez-vous vraiment vous déconnecter ?")) return;
 
     setLoggingOut(true);
     try {
       await signOut();
       navigate("/", { replace: true });
     } catch (error) {
-      console.error("[LOGOUT] error:", error);
-      // ✅ Forcer la déconnexion même si signOut échoue
+      console.error("[LOGOUT]", error);
       navigate("/", { replace: true });
     } finally {
       setLoggingOut(false);
@@ -74,66 +67,68 @@ const AppLayout = () => {
   };
 
   return (
-    <div style={styles.layout}>
-      <aside style={styles.sidebar}>
-        <div style={styles.brand}>
-          {/* ✅ Texte sans emoji pour éviter les problèmes d'encodage */}
-          <h2 style={styles.brandTitle}>AID Platform</h2>
-          <p style={styles.brandSubtitle}>Aid Al Edha</p>
+    <div className="layout">
+      <aside className="sidebar">
+
+        <div className="sidebar-brand">
+          <h2 className="sidebar-brand-title">AID Platform</h2>
+          <p className="sidebar-brand-subtitle">Aid Al Edha</p>
         </div>
 
-        <div style={styles.sidebarScroll}>
-          <div style={styles.navSection}>
-            <div style={styles.navLabel}>
-              {profile.role === "admin"        ? "Administration" :
-               profile.role === "organization" ? "Organisation"   : "Mon espace"}
-            </div>
+        <div className="sidebar-scroll">
+          <div className="nav-section">
+            <div className="nav-label">{SECTION_LABELS[profile.role]}</div>
 
-            {/* ✅ Rendu depuis une config centralisée — plus de triple if */}
             {navItems.map(({ to, end, icon, label }) => (
-              <NavLink key={to} to={to} end={end} style={navLinkStyle}>
-                <span style={styles.navIcon}>{icon}</span>
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}
+              >
+                <span className="nav-icon">{icon}</span>
                 {label}
               </NavLink>
             ))}
           </div>
         </div>
 
-        <div style={styles.sidebarFooter}>
+        <div className="sidebar-footer">
           {profile.role === "fidel" ? (
-            <NavLink to="/fidel/profile" style={profileLinkStyle}>
-              <p style={styles.profileName}>{getDisplayName(profile)}</p>
-              <p style={styles.profileRole}>{getRoleLabel(profile.role)}</p>
+            <NavLink
+              to="/fidel/profile"
+              className={({ isActive }) => `profile-box${isActive ? " active" : ""}`}
+            >
+              <p className="profile-name">{getDisplayName(profile)}</p>
+              <p className="profile-role">{getRoleLabel(profile.role)}</p>
             </NavLink>
           ) : (
-            <div style={styles.profileBox}>
-              <p style={styles.profileName}>{getDisplayName(profile)}</p>
-              <p style={styles.profileRole}>{getRoleLabel(profile.role)}</p>
+            <div className="profile-box">
+              <p className="profile-name">{getDisplayName(profile)}</p>
+              <p className="profile-role">{getRoleLabel(profile.role)}</p>
             </div>
           )}
 
           <button
             onClick={handleLogout}
             disabled={loggingOut}
-            style={{
-              ...styles.logoutButton,
-              ...(loggingOut ? styles.logoutButtonDisabled : {}),
-            }}
+            className="logout-button"
           >
             {loggingOut ? "Déconnexion..." : "Déconnexion"}
           </button>
         </div>
+
       </aside>
 
-      <div style={styles.main}>
-        <header style={styles.header}>
-          <h1 style={styles.headerTitle}>Espace de gestion</h1>
-          <div style={styles.headerRight}>
-            <div style={styles.userChip}>{getRoleLabel(profile.role)}</div>
+      <div className="main">
+        <header className="app-header">
+          <h1 className="header-title">Espace de gestion</h1>
+          <div className="header-right">
+            <div className="user-chip">{getRoleLabel(profile.role)}</div>
           </div>
         </header>
 
-        <main style={styles.content}>
+        <main className="app-content">
           <Outlet />
         </main>
       </div>
