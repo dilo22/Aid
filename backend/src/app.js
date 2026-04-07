@@ -6,7 +6,7 @@ import { errorMiddleware } from "./middlewares/errorMiddleware.js";
 import { globalLimiter } from "./middlewares/rateLimitMiddleware.js";
 
 const app = express();
-
+app.set("trust proxy", 1);
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   "https://aid-adha.space",
