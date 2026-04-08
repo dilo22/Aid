@@ -1,10 +1,13 @@
 import Loader from "../../components/ui/Loader";
+import StatusBadge from "../../components/ui/StatusBadge";
 import "../../styles/AdminOrganizations.css";
 
 const ORGANIZATION_TYPES = [
   { value: "mosque",      label: "Mosquée" },
   { value: "association", label: "Association" },
 ];
+
+const formatDate = (v) => v ? new Date(v).toLocaleDateString("fr-FR") : "-";
 
 export default function AdminOrganizationsManagementCard({
   loading,
@@ -89,8 +92,6 @@ export default function AdminOrganizationsManagementCard({
               <input name="name" value={form.name} onChange={onChange}
                 placeholder="Nom de l'organisation" required className="org-input" />
             </label>
-
-            {/* ✅ Select au lieu de text — aligné avec le backend */}
             <label className="org-label">
               Type *
               <select name="type" value={form.type} onChange={onChange} required className="org-input">
@@ -100,25 +101,21 @@ export default function AdminOrganizationsManagementCard({
                 ))}
               </select>
             </label>
-
             <label className="org-label">
               Adresse
               <input name="address" value={form.address} onChange={onChange}
                 placeholder="Adresse" className="org-input" />
             </label>
-
             <label className="org-label">
               Ville
               <input name="city" value={form.city} onChange={onChange}
                 placeholder="Ville" className="org-input" />
             </label>
-
             <label className="org-label">
               Téléphone
               <input name="phone" value={form.phone} onChange={onChange}
                 placeholder="Téléphone" className="org-input" />
             </label>
-
             <label className="org-label">
               Email *
               <input name="email" type="email" value={form.email} onChange={onChange}
@@ -135,14 +132,12 @@ export default function AdminOrganizationsManagementCard({
             <button type="submit" className="btn-primary" disabled={saving}>
               {saving ? "Enregistrement..." : editingId ? "Enregistrer les modifications" : "Créer l'organisation"}
             </button>
-            <button type="button" onClick={onCancel} className="btn-secondary">
-              Annuler
-            </button>
+            <button type="button" onClick={onCancel} className="btn-secondary">Annuler</button>
           </div>
         </form>
       )}
 
-      {/* TABLE */}
+      {/* ===== TABLEAU — desktop uniquement ===== */}
       <div className="org-table-wrap">
         <table className="org-table">
           <thead>
@@ -159,17 +154,14 @@ export default function AdminOrganizationsManagementCard({
           <tbody>
             {isLoading ? (
               <tr>
-                {/* ✅ colSpan correct — 7 colonnes */}
                 <td colSpan={7} className="org-loading-cell">
                   <Loader small />
-                  <div>Chargement des données...</div>
+                  <div>Chargement...</div>
                 </td>
               </tr>
             ) : filteredOrganizations.length === 0 ? (
               <tr>
-                <td colSpan={7} className="org-empty">
-                  Aucune organisation trouvée.
-                </td>
+                <td colSpan={7} className="org-empty">Aucune organisation trouvée.</td>
               </tr>
             ) : (
               filteredOrganizations.map((org) => {
@@ -182,22 +174,18 @@ export default function AdminOrganizationsManagementCard({
                     <td className="org-td">{org.email || "-"}</td>
                     <td className="org-td">
                       <span style={{ background: theme.background, color: theme.color, border: theme.border }}
-                        className="badge">
-                        {theme.label}
-                      </span>
+                        className="badge">{theme.label}</span>
                     </td>
                     <td className="org-td">{getProfilesCountForOrganization(org.id)}</td>
                     <td className="org-td">
                       <div className="org-actions">
                         <button type="button" className="org-btn-icon"
                           onClick={(e) => { e.stopPropagation(); onEdit(org); }}
-                          title="Modifier" aria-label="Modifier">
-                          ✏️
-                        </button>
+                          title="Modifier">✏️</button>
                         <button type="button" className="org-btn-icon org-btn-icon--delete"
                           onClick={(e) => { e.stopPropagation(); onDelete(org.id, org.name); }}
                           disabled={deletingId === org.id}
-                          title="Supprimer" aria-label="Supprimer">
+                          title="Supprimer">
                           {deletingId === org.id ? "…" : "🗑️"}
                         </button>
                       </div>
@@ -209,6 +197,56 @@ export default function AdminOrganizationsManagementCard({
           </tbody>
         </table>
       </div>
+
+      {/* ===== CARTES — mobile uniquement ===== */}
+      <div className="org-mobile-list">
+        {isLoading ? (
+          <div className="org-mobile-loading"><Loader small /></div>
+        ) : filteredOrganizations.length === 0 ? (
+          <div className="org-mobile-empty">Aucune organisation trouvée.</div>
+        ) : (
+          filteredOrganizations.map((org) => (
+            <div key={org.id} className="org-mobile-card" onClick={() => onRowClick(org)}>
+              <div className="org-mobile-card-header">
+                <span className="org-mobile-card-name">{org.name || "-"}</span>
+                <StatusBadge status={org.is_active ? "approved" : "inactive"} />
+              </div>
+              <div className="org-mobile-card-row">
+                <span>Ville</span>
+                <span className="org-mobile-card-value">{org.city || "-"}</span>
+              </div>
+              <div className="org-mobile-card-row">
+                <span>Type</span>
+                <span className="org-mobile-card-value">{org.type || "-"}</span>
+              </div>
+              <div className="org-mobile-card-row">
+                <span>Téléphone</span>
+                <span className="org-mobile-card-value">{org.phone || "-"}</span>
+              </div>
+              <div className="org-mobile-card-row">
+                <span>Fidèles</span>
+                <span className="org-mobile-card-value">{getProfilesCountForOrganization(org.id)}</span>
+              </div>
+              <div className="org-mobile-card-row">
+                <span>Créé le</span>
+                <span className="org-mobile-card-value">{formatDate(org.created_at)}</span>
+              </div>
+              <div className="org-mobile-card-actions">
+                <button type="button" className="org-btn-icon"
+                  onClick={(e) => { e.stopPropagation(); onEdit(org); }}
+                  title="Modifier">✏️</button>
+                <button type="button" className="org-btn-icon org-btn-icon--delete"
+                  onClick={(e) => { e.stopPropagation(); onDelete(org.id, org.name); }}
+                  disabled={deletingId === org.id}
+                  title="Supprimer">
+                  {deletingId === org.id ? "…" : "🗑️"}
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
     </div>
   );
 }
