@@ -17,12 +17,12 @@ const NAV_ITEMS = {
     { to: "/admin/organizations", end: false, icon: "🕌", label: "Organisations" },
     { to: "/admin/sheep",         end: false, icon: "🐏", label: "Moutons" },
     { to: "/admin/profiles",      end: false, icon: "👥", label: "Utilisateurs" },
-    { to: "/admin/appointments", end: false, icon: "📅", label: "Rendez-vous" },
+    { to: "/admin/appointments",  end: false, icon: "📅", label: "Rendez-vous" },
   ],
   organization: [
     { to: "/organization",         end: true,  icon: "📊", label: "Tableau de bord" },
     { to: "/organization/fidels",  end: false, icon: "👥", label: "Fidèles" },
-    { to: "/organization/contact", end: false, icon: "🛠", label: "Support technique" },
+    { to: "/organization/contact", end: false, icon: "🛠",  label: "Support technique" },
   ],
   fidel: [
     { to: "/fidel",         end: true,  icon: "🏠", label: "Tableau de bord" },
@@ -46,7 +46,8 @@ const getDisplayName = (profile) => {
 const AppLayout = () => {
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
-  const [loggingOut, setLoggingOut] = useState(false);
+  const [loggingOut,   setLoggingOut]   = useState(false);
+  const [sidebarOpen,  setSidebarOpen]  = useState(false);
 
   const handleLogout = async () => {
     if (loggingOut) return;
@@ -63,7 +64,6 @@ const AppLayout = () => {
     }
   };
 
-  // ✅ Hook appelé AVANT tout return conditionnel
   const handleIdle = useCallback(async () => {
     try { await signOut(); } catch (e) { console.error("[IDLE]", e); }
     finally { navigate("/login", { replace: true }); }
@@ -71,15 +71,34 @@ const AppLayout = () => {
 
   useIdleTimeout(handleIdle);
 
-  // ✅ Return conditionnel APRÈS tous les hooks
   if (!profile) return <Loader />;
 
   const navItems = NAV_ITEMS[profile.role] || [];
 
+  const closeSidebar = () => setSidebarOpen(false);
+
   return (
     <div className="layout">
-      <aside className="sidebar">
 
+      {/* ===== HAMBURGER (mobile only) ===== */}
+      <button
+        className="hamburger"
+        onClick={() => setSidebarOpen((o) => !o)}
+        aria-label="Menu"
+      >
+        <span className="hamburger-bar" />
+        <span className="hamburger-bar" />
+        <span className="hamburger-bar" />
+      </button>
+
+      {/* ===== OVERLAY (mobile only) ===== */}
+      <div
+        className={`sidebar-overlay${sidebarOpen ? " sidebar-overlay--open" : ""}`}
+        onClick={closeSidebar}
+      />
+
+      {/* ===== SIDEBAR ===== */}
+      <aside className={`sidebar${sidebarOpen ? " sidebar--open" : ""}`}>
         <div className="sidebar-brand">
           <h2 className="sidebar-brand-title">AID Platform</h2>
           <p className="sidebar-brand-subtitle">Aid Al Edha</p>
@@ -93,6 +112,7 @@ const AppLayout = () => {
                 key={to}
                 to={to}
                 end={end}
+                onClick={closeSidebar} // ✅ ferme le menu au clic sur mobile
                 className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}
               >
                 <span className="nav-icon">{icon}</span>
@@ -106,6 +126,7 @@ const AppLayout = () => {
           {profile.role === "fidel" ? (
             <NavLink
               to="/fidel/profile"
+              onClick={closeSidebar}
               className={({ isActive }) => `profile-box${isActive ? " active" : ""}`}
             >
               <p className="profile-name">{getDisplayName(profile)}</p>
@@ -126,9 +147,9 @@ const AppLayout = () => {
             {loggingOut ? "Déconnexion..." : "Déconnexion"}
           </button>
         </div>
-
       </aside>
 
+      {/* ===== MAIN ===== */}
       <div className="main">
         <header className="app-header">
           <h1 className="header-title">Espace de gestion</h1>
