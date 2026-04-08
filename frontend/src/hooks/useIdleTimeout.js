@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from "react";
 
-const IDLE_TIMEOUT_MS   = 1 * 60 * 1000; // 30 minutes
-const WARNING_BEFORE_MS =  20  * 1000; // avertissement 2 min avant
+const IDLE_TIMEOUT_MS   = 30 * 60 * 1000; // 30 minutes
+const WARNING_BEFORE_MS =  2 * 60 * 1000; // avertissement 2 min avant
 const EVENTS = ["mousemove", "mousedown", "keydown", "touchstart", "scroll", "click"];
 
 export const useIdleTimeout = (onTimeout) => {
