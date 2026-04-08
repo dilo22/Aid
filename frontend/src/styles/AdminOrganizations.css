@@ -209,3 +209,53 @@
 
 .org-page      { min-height: 100vh; background: #f8fafc; padding: 24px; }
 .org-container { max-width: 1400px; margin: 0 auto; display: grid; gap: 20px; }
+
+/* ===== MOBILE CARDS (< 768px) ===== */
+@media (max-width: 768px) {
+  .admin-table-wrap { display: none; }
+  .admin-mobile-list { display: grid; gap: 12px; padding: 16px; }
+}
+
+@media (min-width: 769px) {
+  .admin-mobile-list { display: none; }
+}
+
+.admin-mobile-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px;
+  display: grid;
+  gap: 8px;
+}
+
+.admin-mobile-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.admin-mobile-card-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.admin-mobile-card-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.admin-mobile-card-value {
+  font-weight: 600;
+  color: #374151;
+}
+
+.admin-mobile-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
