@@ -23,24 +23,22 @@ const ALLOWED_SORT_FIELDS = [
 ];
 const ALLOWED_SORT_ORDERS = ["asc", "desc"];
 
+// ===== HELPERS =====
+
 const parseNullableNumber = (value) => {
   if (value === undefined || value === null || value === "") return null;
-
   const parsed = Number(value);
   if (Number.isNaN(parsed)) {
     throw new ApiError(400, "Valeur numérique invalide");
   }
-
   return parsed;
 };
 
 const parseNonNegativeNullableNumber = (value, fieldLabel) => {
   const parsed = parseNullableNumber(value);
-
   if (parsed !== null && parsed < 0) {
     throw new ApiError(400, `${fieldLabel} ne peut pas être négatif`);
   }
-
   return parsed;
 };
 
@@ -65,7 +63,6 @@ const validatePaymentStatus = (paymentStatus) => {
 const normalizeTextOrNull = (value) => {
   if (value === undefined) return undefined;
   if (value === null) return null;
-
   const cleaned = String(value).trim();
   return cleaned || null;
 };
@@ -82,6 +79,8 @@ const parseNullableDate = (value, fieldLabel = "Date invalide") => {
   return date.toISOString();
 };
 
+// ===== GET LIST =====
+
 export const getSheepList = async (req, res, next) => {
   try {
     const {
@@ -95,41 +94,33 @@ export const getSheepList = async (req, res, next) => {
       limit = 10,
     } = req.query;
 
-    const cleanSearch = String(search).trim();
-    const cleanStatus = String(status).trim();
-    const cleanSize = String(size).trim();
-    const cleanColor = String(color).trim();
-    const cleanSortBy = String(sortBy).trim();
-    const cleanSortOrder = String(sortOrder).trim().toLowerCase();
-
-    if (cleanStatus) validateStatus(cleanStatus);
-    if (cleanSize) validateSize(cleanSize);
-
     const parsedPage = Math.max(parseInt(page, 10) || 1, 1);
     const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 100);
+
     const from = (parsedPage - 1) * parsedLimit;
     const to = from + parsedLimit - 1;
 
-    const safeSortBy = ALLOWED_SORT_FIELDS.includes(cleanSortBy)
-      ? cleanSortBy
+    const safeSortBy = ALLOWED_SORT_FIELDS.includes(sortBy)
+      ? sortBy
       : "created_at";
 
-    const safeSortOrder = ALLOWED_SORT_ORDERS.includes(cleanSortOrder)
-      ? cleanSortOrder
+    const safeSortOrder = ALLOWED_SORT_ORDERS.includes(sortOrder)
+      ? sortOrder
       : "desc";
 
     let query = supabase
       .from("sheep")
-      .select("*", { count: "exact" })
-      .is("deleted_at", null);
+      .select("*", { count: "exact" });
 
+    // ✅ Filtre fidèle uniquement
     if (req.user.role === "fidel") {
       query = query.eq("fidel_id", req.user.id);
     }
-    if (cleanSearch) query = query.ilike("number", `%${cleanSearch}%`);
-    if (cleanStatus) query = query.eq("status", cleanStatus);
-    if (cleanSize) query = query.eq("size", cleanSize);
-    if (cleanColor) query = query.eq("color", cleanColor);
+
+    if (search) query = query.ilike("number", `%${search}%`);
+    if (status) query = query.eq("status", status);
+    if (size) query = query.eq("size", size);
+    if (color) query = query.eq("color", color);
 
     query = query
       .order(safeSortBy, { ascending: safeSortOrder === "asc" })
@@ -139,7 +130,7 @@ export const getSheepList = async (req, res, next) => {
 
     if (error) {
       console.error("[GET_SHEEP_LIST]", error);
-      throw new ApiError(500, "Erreur serveur");
+      throw new ApiError(500, error.message);
     }
 
     res.json({
@@ -155,6 +146,8 @@ export const getSheepList = async (req, res, next) => {
     next(error);
   }
 };
+
+// ===== CREATE =====
 
 export const createSheep = async (req, res, next) => {
   try {
@@ -185,36 +178,12 @@ export const createSheep = async (req, res, next) => {
     validatePaymentStatus(payment_status);
 
     const cleanNumber = String(number).trim();
-    const cleanWeight = parseNullableNumber(weight);
-    const cleanPrice = parseNonNegativeNullableNumber(price, "Le prix");
-    const cleanDiscountAmount =
-      parseNonNegativeNullableNumber(discount_amount, "La réduction") ?? 0;
-    const cleanFinalPrice = parseNonNegativeNullableNumber(
-      final_price,
-      "Le prix final"
-    );
-    const cleanPaymentDueDate = parseNullableDate(
-      payment_due_date,
-      "Date d'échéance invalide"
-    );
-    const cleanAssignedAt = parseNullableDate(
-      assigned_at,
-      "Date d'attribution invalide"
-    );
 
-    const cleanFidelId =
-      fidel_id === undefined ? undefined : normalizeTextOrNull(fidel_id);
-
-    const { data: existing, error: existingError } = await supabase
+    const { data: existing } = await supabase
       .from("sheep")
       .select("id")
       .eq("number", cleanNumber)
-      .is("deleted_at", null)
       .maybeSingle();
-
-    if (existingError) {
-      throw new ApiError(400, existingError.message);
-    }
 
     if (existing) {
       throw new ApiError(400, "Ce numéro de mouton existe déjà");
@@ -223,25 +192,28 @@ export const createSheep = async (req, res, next) => {
     const insertData = {
       number: cleanNumber,
       photo_url: normalizeTextOrNull(photo_url) ?? null,
-      weight: cleanWeight,
-      price: cleanPrice,
+      weight: parseNullableNumber(weight),
+      price: parseNonNegativeNullableNumber(price, "Le prix"),
       status: status || "available",
-      notes: notes?.trim?.() || null,
+      notes: normalizeTextOrNull(notes),
       size: size || null,
-      color: normalizeTextOrNull(color) ?? null,
-      fidel_id: cleanFidelId ?? null,
-      discount_amount: cleanDiscountAmount,
-      final_price: cleanFinalPrice,
+      color: normalizeTextOrNull(color),
+      fidel_id: normalizeTextOrNull(fidel_id),
+      discount_amount:
+        parseNonNegativeNullableNumber(discount_amount, "La réduction") ?? 0,
+      final_price: parseNonNegativeNullableNumber(
+        final_price,
+        "Le prix final"
+      ),
       payment_status: payment_status || "unpaid",
-      payment_due_date: cleanPaymentDueDate ?? null,
-      payment_notes: payment_notes?.trim?.() || null,
-      assigned_at: cleanAssignedAt ?? null,
+      payment_due_date: parseNullableDate(payment_due_date),
+      payment_notes: normalizeTextOrNull(payment_notes),
+      assigned_at: parseNullableDate(assigned_at),
     };
 
     if (insertData.fidel_id) {
       insertData.assigned_at =
         insertData.assigned_at || new Date().toISOString();
-
       if (!insertData.status || insertData.status === "available") {
         insertData.status = "assigned";
       }
@@ -263,187 +235,45 @@ export const createSheep = async (req, res, next) => {
   }
 };
 
+// ===== UPDATE =====
+
 export const updateSheep = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const {
-      number,
-      photo_url,
-      weight,
-      price,
-      status,
-      notes,
-      size,
-      color,
-      fidel_id,
-      discount_amount,
-      final_price,
-      payment_status,
-      payment_due_date,
-      payment_notes,
-      assigned_at,
-    } = req.body;
+    const updates = req.body;
 
-    if (!id) {
-      throw new ApiError(400, "ID du mouton manquant");
-    }
-
-    if (status !== undefined) {
-      validateStatus(status);
-    }
-
-    if (size !== undefined) {
-      validateSize(size);
-    }
-
-    if (payment_status !== undefined) {
-      validatePaymentStatus(payment_status);
-    }
-
-    const { data: existingSheep, error: existingSheepError } = await supabase
+    const { data: existingSheep } = await supabase
       .from("sheep")
       .select("*")
       .eq("id", id)
-      .is("deleted_at", null)
       .single();
 
-    if (existingSheepError || !existingSheep) {
+    if (!existingSheep) {
       throw new ApiError(404, "Mouton introuvable");
     }
 
-    const updateData = {};
-
-    if (number !== undefined) {
-      if (!String(number).trim()) {
-        throw new ApiError(400, "Le numéro du mouton est obligatoire");
-      }
-
-      const cleanNumber = String(number).trim();
-
-      const { data: existing, error: existingError } = await supabase
+    if (updates.number) {
+      const { data: duplicate } = await supabase
         .from("sheep")
         .select("id")
-        .eq("number", cleanNumber)
+        .eq("number", updates.number)
         .neq("id", id)
-        .is("deleted_at", null)
         .maybeSingle();
 
-      if (existingError) {
-        throw new ApiError(400, existingError.message);
-      }
-
-      if (existing) {
+      if (duplicate) {
         throw new ApiError(400, "Ce numéro de mouton existe déjà");
-      }
-
-      updateData.number = cleanNumber;
-    }
-
-    if (photo_url !== undefined) {
-      updateData.photo_url = normalizeTextOrNull(photo_url);
-    }
-
-    if (weight !== undefined) {
-      updateData.weight = parseNullableNumber(weight);
-    }
-
-    if (price !== undefined) {
-      updateData.price = parseNonNegativeNullableNumber(price, "Le prix");
-    }
-
-    if (status !== undefined) {
-      updateData.status = status;
-    }
-
-    if (notes !== undefined) {
-      updateData.notes = notes?.trim?.() || null;
-    }
-
-    if (size !== undefined) {
-      updateData.size = size || null;
-    }
-
-    if (color !== undefined) {
-      updateData.color = normalizeTextOrNull(color);
-    }
-
-    if (discount_amount !== undefined) {
-      updateData.discount_amount =
-        parseNonNegativeNullableNumber(discount_amount, "La réduction") ?? 0;
-    }
-
-    if (final_price !== undefined) {
-      updateData.final_price = parseNonNegativeNullableNumber(
-        final_price,
-        "Le prix final"
-      );
-    }
-
-    if (payment_status !== undefined) {
-      updateData.payment_status = payment_status;
-    }
-
-    if (payment_due_date !== undefined) {
-      updateData.payment_due_date = parseNullableDate(
-        payment_due_date,
-        "Date d'échéance invalide"
-      );
-    }
-
-    if (payment_notes !== undefined) {
-      updateData.payment_notes = payment_notes?.trim?.() || null;
-    }
-
-    if (assigned_at !== undefined) {
-      updateData.assigned_at = parseNullableDate(
-        assigned_at,
-        "Date d'attribution invalide"
-      );
-    }
-
-    if (fidel_id !== undefined) {
-      updateData.fidel_id = normalizeTextOrNull(fidel_id);
-    }
-
-    const nextFidelId =
-      fidel_id !== undefined ? updateData.fidel_id : existingSheep.fidel_id;
-
-    const nextStatus =
-      status !== undefined ? status : existingSheep.status;
-
-    if (fidel_id !== undefined) {
-      if (nextFidelId) {
-        updateData.assigned_at =
-          updateData.assigned_at ||
-          existingSheep.assigned_at ||
-          new Date().toISOString();
-
-        if (status === undefined && nextStatus === "available") {
-          updateData.status = "assigned";
-        }
-      } else {
-        updateData.assigned_at = null;
-
-        if (status === undefined && nextStatus === "assigned") {
-          updateData.status = "available";
-        }
       }
     }
 
     const { data, error } = await supabase
       .from("sheep")
-      .update(updateData)
+      .update(updates)
       .eq("id", id)
-      .is("deleted_at", null)
       .select("*")
       .single();
 
     if (error) {
       throw new ApiError(400, error.message);
-    }
-
-    if (!data) {
-      throw new ApiError(404, "Mouton introuvable");
     }
 
     res.json(data);
@@ -452,17 +282,16 @@ export const updateSheep = async (req, res, next) => {
   }
 };
 
+// ===== DELETE (HARD DELETE) =====
+
 export const deleteSheep = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    if (!id) throw new ApiError(400, "ID du mouton manquant");
-
     const { data: sheep } = await supabase
       .from("sheep")
-      .select("status")
+      .select("status, number")
       .eq("id", id)
-      .is("deleted_at", null)
       .maybeSingle();
 
     if (!sheep) throw new ApiError(404, "Mouton introuvable");
@@ -474,24 +303,25 @@ export const deleteSheep = async (req, res, next) => {
       );
     }
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("sheep")
-      .update({ deleted_at: new Date().toISOString() })
-      .eq("id", id)
-      .is("deleted_at", null)
-      .select("id, number")
-      .single();
+      .delete()
+      .eq("id", id);
 
     if (error) {
-      console.error("[DELETE_SHEEP]", error);
-      throw new ApiError(500, "Erreur serveur");
+      throw new ApiError(500, error.message);
     }
 
-    res.json({ message: "Mouton supprimé avec succès", item: data });
+    res.json({
+      message: "Mouton supprimé avec succès",
+      item: { id, number: sheep.number },
+    });
   } catch (error) {
     next(error);
   }
 };
+
+// ===== DISABLED FEATURE =====
 
 export const assignSheep = async (req, res, next) => {
   next(new ApiError(501, "Fonctionnalité non disponible"));
