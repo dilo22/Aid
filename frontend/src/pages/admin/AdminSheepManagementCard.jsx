@@ -36,7 +36,6 @@ export default function AdminSheepManagementCard({
   setColorFilter,
   setSortBy,
   getRealSheepStatus,
-  getStatusTheme,
   getAssignedProfileName,
   formatPrice,
   formatWeight,

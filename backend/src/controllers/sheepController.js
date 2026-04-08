@@ -81,40 +81,62 @@ const parseNullableDate = (value, fieldLabel = "Date invalide") => {
 
   return date.toISOString();
 };
+
 export const getSheepList = async (req, res, next) => {
   try {
     const {
-      search = "", status = "", size = "", color = "",
-      sortBy = "created_at", sortOrder = "desc",
-      page = 1, limit = 10,
+      search = "",
+      status = "",
+      size = "",
+      color = "",
+      sortBy = "created_at",
+      sortOrder = "desc",
+      page = 1,
+      limit = 10,
     } = req.query;
 
-    const parsedPage  = Math.max(parseInt(page,  10) || 1,  1);
+    const cleanSearch = String(search).trim();
+    const cleanStatus = String(status).trim();
+    const cleanSize = String(size).trim();
+    const cleanColor = String(color).trim();
+    const cleanSortBy = String(sortBy).trim();
+    const cleanSortOrder = String(sortOrder).trim().toLowerCase();
+
+    if (cleanStatus) validateStatus(cleanStatus);
+    if (cleanSize) validateSize(cleanSize);
+
+    const parsedPage = Math.max(parseInt(page, 10) || 1, 1);
     const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 100);
     const from = (parsedPage - 1) * parsedLimit;
-    const to   = from + parsedLimit - 1;
+    const to = from + parsedLimit - 1;
 
-    const safeSortBy    = ALLOWED_SORT_FIELDS.includes(sortBy)    ? sortBy    : "created_at";
-    const safeSortOrder = ALLOWED_SORT_ORDERS.includes(sortOrder) ? sortOrder : "desc";
+    const safeSortBy = ALLOWED_SORT_FIELDS.includes(cleanSortBy)
+      ? cleanSortBy
+      : "created_at";
+
+    const safeSortOrder = ALLOWED_SORT_ORDERS.includes(cleanSortOrder)
+      ? cleanSortOrder
+      : "desc";
 
     let query = supabase
-  .from("sheep")
-  .select("*", { count: "exact" })
-  .is("deleted_at", null);
+      .from("sheep")
+      .select("*", { count: "exact" })
+      .is("deleted_at", null);
 
-    // ✅ Filtrage selon le rôle
     if (req.user.role === "fidel") {
       query = query.eq("fidel_id", req.user.id);
     } else if (req.user.role !== "admin" && req.user.organization_id) {
       query = query.eq("organization_id", req.user.organization_id);
     }
 
-    if (search) query = query.ilike("number", `%${search}%`);
-    if (status) query = query.eq("status", status);
-    if (size)   query = query.eq("size", size);
-    if (color)  query = query.eq("color", color);
+    if (cleanSearch) query = query.ilike("number", `%${cleanSearch}%`);
+    if (cleanStatus) query = query.eq("status", cleanStatus);
+    if (cleanSize) query = query.eq("size", cleanSize);
+    if (cleanColor) query = query.eq("color", cleanColor);
 
-    query = query.order(safeSortBy, { ascending: safeSortOrder === "asc" }).range(from, to);
+    query = query
+      .order(safeSortBy, { ascending: safeSortOrder === "asc" })
+      .range(from, to);
 
     const { data, error, count } = await query;
 
@@ -125,7 +147,12 @@ export const getSheepList = async (req, res, next) => {
 
     res.json({
       items: data || [],
-      meta: { total: count || 0, page: parsedPage, limit: parsedLimit, totalPages: Math.ceil((count || 0) / parsedLimit) || 1 },
+      meta: {
+        total: count || 0,
+        page: parsedPage,
+        limit: parsedLimit,
+        totalPages: Math.ceil((count || 0) / parsedLimit) || 1,
+      },
     });
   } catch (error) {
     next(error);
@@ -164,10 +191,7 @@ export const createSheep = async (req, res, next) => {
     const cleanWeight = parseNullableNumber(weight);
     const cleanPrice = parseNonNegativeNullableNumber(price, "Le prix");
     const cleanDiscountAmount =
-      parseNonNegativeNullableNumber(
-        discount_amount,
-        "La réduction"
-      ) ?? 0;
+      parseNonNegativeNullableNumber(discount_amount, "La réduction") ?? 0;
     const cleanFinalPrice = parseNonNegativeNullableNumber(
       final_price,
       "Le prix final"
@@ -188,6 +212,7 @@ export const createSheep = async (req, res, next) => {
       .from("sheep")
       .select("id")
       .eq("number", cleanNumber)
+      .is("deleted_at", null)
       .maybeSingle();
 
     if (existingError) {
@@ -206,7 +231,7 @@ export const createSheep = async (req, res, next) => {
       status: status || "available",
       notes: notes?.trim?.() || null,
       size: size || null,
-      color: color || null,
+      color: normalizeTextOrNull(color) ?? null,
       fidel_id: cleanFidelId ?? null,
       discount_amount: cleanDiscountAmount,
       final_price: cleanFinalPrice,
@@ -217,12 +242,10 @@ export const createSheep = async (req, res, next) => {
     };
 
     if (insertData.fidel_id) {
-      insertData.assigned_at = insertData.assigned_at || new Date().toISOString();
+      insertData.assigned_at =
+        insertData.assigned_at || new Date().toISOString();
 
-      if (
-        !insertData.status ||
-        insertData.status === "available"
-      ) {
+      if (!insertData.status || insertData.status === "available") {
         insertData.status = "assigned";
       }
     }
@@ -284,6 +307,7 @@ export const updateSheep = async (req, res, next) => {
       .from("sheep")
       .select("*")
       .eq("id", id)
+      .is("deleted_at", null)
       .single();
 
     if (existingSheepError || !existingSheep) {
@@ -304,6 +328,7 @@ export const updateSheep = async (req, res, next) => {
         .select("id")
         .eq("number", cleanNumber)
         .neq("id", id)
+        .is("deleted_at", null)
         .maybeSingle();
 
       if (existingError) {
@@ -342,7 +367,7 @@ export const updateSheep = async (req, res, next) => {
     }
 
     if (color !== undefined) {
-      updateData.color = color || null;
+      updateData.color = normalizeTextOrNull(color);
     }
 
     if (discount_amount !== undefined) {
@@ -412,6 +437,7 @@ export const updateSheep = async (req, res, next) => {
       .from("sheep")
       .update(updateData)
       .eq("id", id)
+      .is("deleted_at", null)
       .select("*")
       .single();
 
@@ -429,9 +455,6 @@ export const updateSheep = async (req, res, next) => {
   }
 };
 
-
-
-// ✅ deleteSheep — soft delete au lieu de suppression physique
 export const deleteSheep = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -439,19 +462,26 @@ export const deleteSheep = async (req, res, next) => {
     if (!id) throw new ApiError(400, "ID du mouton manquant");
 
     const { data: sheep } = await supabase
-      .from("sheep").select("status").eq("id", id).maybeSingle();
+      .from("sheep")
+      .select("status")
+      .eq("id", id)
+      .is("deleted_at", null)
+      .maybeSingle();
 
     if (!sheep) throw new ApiError(404, "Mouton introuvable");
 
-    // ✅ Bloquer la suppression si assigné ou sacrifié
     if (["assigned", "sacrificed"].includes(sheep.status)) {
-      throw new ApiError(400, "Impossible de supprimer un mouton assigné ou sacrifié");
+      throw new ApiError(
+        400,
+        "Impossible de supprimer un mouton assigné ou sacrifié"
+      );
     }
 
     const { data, error } = await supabase
       .from("sheep")
       .update({ deleted_at: new Date().toISOString() })
       .eq("id", id)
+      .is("deleted_at", null)
       .select("id, number")
       .single();
 
@@ -466,8 +496,6 @@ export const deleteSheep = async (req, res, next) => {
   }
 };
 
-
-// ✅ assignSheep — supprimer l'erreur intentionnelle, route à désactiver proprement
 export const assignSheep = async (req, res, next) => {
   next(new ApiError(501, "Fonctionnalité non disponible"));
 };

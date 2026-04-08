@@ -7,8 +7,6 @@ import AdminSheepModal from "./AdminSheepModal";
 import { SHEEP_SIZES } from "../../constants/sheep";
 import "../../styles/AdminSheep.css";
 
-// ===== HELPERS =====
-
 const EMPTY_FORM = {
   number: "",
   photo_url: "",
@@ -39,17 +37,14 @@ const formatMoney = (value) => {
   })} €`;
 };
 
-const formatWeight = (v) => (v ?? "") === "" ? "-" : `${v} kg`;
-const formatDate = (v) =>
-  v ? new Date(v).toLocaleDateString("fr-FR") : "-";
+const formatWeight = (v) => ((v ?? "") === "" ? "-" : `${v} kg`);
+const formatDate = (v) => (v ? new Date(v).toLocaleDateString("fr-FR") : "-");
 const formatDateTime = (v) =>
   v ? new Date(v).toLocaleString("fr-FR") : "-";
 
 const getProfileDisplayName = (profile) => {
   if (!profile) return "-";
-  const name = `${profile.first_name || ""} ${
-    profile.last_name || ""
-  }`.trim();
+  const name = `${profile.first_name || ""} ${profile.last_name || ""}`.trim();
   return name || profile.email || "-";
 };
 
@@ -65,13 +60,10 @@ const getExpectedAmount = (item) => {
     return Math.max(normalizeMoney(item.final_price), 0);
   }
   return Math.max(
-    normalizeMoney(item?.price) -
-      normalizeMoney(item?.discount_amount),
+    normalizeMoney(item?.price) - normalizeMoney(item?.discount_amount),
     0
   );
 };
-
-// ===== PAGE =====
 
 export default function AdminSheepPage() {
   const {
@@ -108,14 +100,14 @@ export default function AdminSheepPage() {
   const sizeFilter = filters.size || "all";
   const colorFilter = filters.color || "all";
 
-  // ===== PROFILS =====
   useEffect(() => {
     const loadProfiles = async () => {
       try {
         setProfilesLoading(true);
         const data = await getApprovedProfiles();
         setProfiles(Array.isArray(data) ? data : data?.items ?? []);
-      } catch {
+      } catch (error) {
+        console.error("[AdminSheepPage] loadProfiles:", error);
         setProfiles([]);
       } finally {
         setProfilesLoading(false);
@@ -124,6 +116,31 @@ export default function AdminSheepPage() {
     loadProfiles();
   }, []);
 
+  const reloadSelectedSheepPayments = async (sheepId) => {
+    if (!sheepId) {
+      setPayments([]);
+      setPaymentsSummary(null);
+      return;
+    }
+
+    try {
+      setPaymentsLoading(true);
+      const data = await getPaymentsBySheepId(sheepId);
+      setPayments(Array.isArray(data?.items) ? data.items : []);
+      setPaymentsSummary(data?.summary ?? null);
+    } catch (error) {
+      console.error("[AdminSheepPage] reloadSelectedSheepPayments:", error);
+      setPayments([]);
+      setPaymentsSummary(null);
+    } finally {
+      setPaymentsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    reloadSelectedSheepPayments(selectedSheep?.id);
+  }, [selectedSheep?.id]);
+
   const profilesMap = useMemo(() => {
     const map = new Map();
     profiles.forEach((p) => map.set(String(p.id), p));
@@ -131,14 +148,10 @@ export default function AdminSheepPage() {
   }, [profiles]);
 
   const getAssignedProfile = (item) =>
-    item?.fidel_id
-      ? profilesMap.get(String(item.fidel_id)) ?? null
-      : null;
+    item?.fidel_id ? profilesMap.get(String(item.fidel_id)) ?? null : null;
 
   const getAssignedProfileName = (item) =>
     getProfileDisplayName(getAssignedProfile(item));
-
-  // ===== HANDLERS FILTRES =====
 
   const handleSearch = (v) => setFilters({ search: v, page: 1 });
   const handleStatus = (v) =>
@@ -159,46 +172,118 @@ export default function AdminSheepPage() {
     setFilters({ ...(map[value] || map.recent), page: 1 });
   };
 
-  // ===== FORM =====
-
   const handleOpenCreate = () => {
     setEditingId(null);
     setForm(EMPTY_FORM);
     setShowForm(true);
+    setErrorMessage("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleEdit = (item) => {
     setEditingId(item.id);
-    setForm({ ...item });
+    setForm({
+      number: item.number || "",
+      photo_url: item.photo_url || "",
+      weight: item.weight ?? "",
+      price: item.price ?? "",
+      discount_amount: item.discount_amount ?? "",
+      final_price: item.final_price ?? "",
+      size: item.size || "",
+      color: item.color || "",
+      status: getRealSheepStatus(item),
+      payment_due_date: item.payment_due_date
+        ? new Date(item.payment_due_date).toISOString().slice(0, 16)
+        : "",
+      payment_notes: item.payment_notes || "",
+      notes: item.notes || "",
+    });
+    setSelectedSheep(null);
     setShowForm(true);
+    setErrorMessage("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  const handleCancel = () => {
+    setEditingId(null);
+    setForm(EMPTY_FORM);
+    setShowForm(false);
+    setErrorMessage("");
+  };
+
+  const parseNum = (v) => (v === "" ? null : Number(String(v).replace(",", ".")));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
+    setErrorMessage("");
+
+    const currentSheep = sheep.find((s) => s.id === editingId);
+    const wasAssigned = !!currentSheep?.fidel_id;
+    const nextStatus = String(form.status || "").toLowerCase();
+
+    if (editingId && wasAssigned && nextStatus === "available") {
+      if (
+        !window.confirm(
+          "Remettre ce mouton en disponible ? Cela coupera le lien avec le fidèle."
+        )
+      ) {
+        setSaving(false);
+        return;
+      }
+    }
+
     try {
-      if (editingId) await updateSheep(editingId, form);
-      else await createSheep(form);
+      const payload = {
+        ...form,
+        photo_url: form.photo_url || null,
+        weight: parseNum(form.weight),
+        price: parseNum(form.price),
+        discount_amount: parseNum(form.discount_amount) ?? 0,
+        final_price: parseNum(form.final_price),
+        payment_due_date: form.payment_due_date || null,
+        payment_notes: form.payment_notes || null,
+        notes: form.notes || null,
+        ...(editingId && wasAssigned && nextStatus === "available"
+          ? { fidel_id: null }
+          : {}),
+      };
+
+      if (editingId) await updateSheep(editingId, payload);
+      else await createSheep(payload);
+
       await refresh();
-      setShowForm(false);
+      handleCancel();
     } catch (e) {
-      setErrorMessage(e.message);
+      console.error("[AdminSheepPage] handleSubmit:", e);
+      setErrorMessage(
+        e?.response?.data?.message || e?.message || "Erreur lors de l'enregistrement."
+      );
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Supprimer ?")) return;
+  const handleDelete = async (id, number) => {
+    if (!window.confirm(`Supprimer le mouton #${number || id} ?`)) return;
     setDeletingId(id);
+    setErrorMessage("");
+
     try {
       await deleteSheep(id);
+      if (editingId === id) handleCancel();
+      if (selectedSheep?.id === id) setSelectedSheep(null);
+      await refresh();
+    } catch (e) {
+      console.error("[AdminSheepPage] handleDelete:", e);
+      setErrorMessage(
+        e?.response?.data?.message || e?.message || "Erreur lors de la suppression."
+      );
     } finally {
       setDeletingId(null);
     }
   };
 
-  // ===== PAGINATION =====
   const sortValue =
     filters.sortBy === "number" && filters.sortOrder === "asc"
       ? "number_asc"
@@ -210,12 +295,33 @@ export default function AdminSheepPage() {
       ? "price_desc"
       : "recent";
 
-  // ===== RENDER =====
+  const selectedSheepAssignedProfile = useMemo(
+    () => (selectedSheep ? getAssignedProfile(selectedSheep) : null),
+    [selectedSheep, profilesMap]
+  );
+
+  const selectedSheepExpectedAmount = useMemo(
+    () => (selectedSheep ? getExpectedAmount(selectedSheep) : 0),
+    [selectedSheep]
+  );
+
+  const selectedSheepPaidAmount = useMemo(
+    () =>
+      paymentsSummary?.paidAmount ??
+      payments.reduce((sum, payment) => sum + normalizeMoney(payment.amount), 0),
+    [payments, paymentsSummary]
+  );
+
+  const selectedSheepRemainingAmount = useMemo(
+    () =>
+      paymentsSummary?.remainingAmount ??
+      Math.max(selectedSheepExpectedAmount - selectedSheepPaidAmount, 0),
+    [paymentsSummary, selectedSheepExpectedAmount, selectedSheepPaidAmount]
+  );
 
   return (
     <div className="sheep-page">
       <div className="sheep-container">
-
         {errorMessage && <div className="sheep-error">{errorMessage}</div>}
 
         <AdminSheepManagementCard
@@ -226,21 +332,17 @@ export default function AdminSheepPage() {
           showForm={showForm}
           editingId={editingId}
           form={form}
-
           search={search}
           statusFilter={statusFilter}
           sizeFilter={sizeFilter}
           colorFilter={colorFilter}
           sortBy={sortValue}
-
           sizeOptions={SHEEP_SIZES}
           colorOptions={[...new Set(sheep.map((s) => s.color).filter(Boolean))]}
-
           filteredSheep={sheep}
           meta={meta}
           onPageChange={goToPage}
           onLimitChange={setLimit}
-
           onRefresh={refresh}
           onOpenCreate={handleOpenCreate}
           onChange={(e) =>
@@ -250,17 +352,15 @@ export default function AdminSheepPage() {
             }))
           }
           onSubmit={handleSubmit}
-          onCancel={() => setShowForm(false)}
+          onCancel={handleCancel}
           onEdit={handleEdit}
           onDelete={handleDelete}
           onRowClick={setSelectedSheep}
-
           setSearch={handleSearch}
           setStatusFilter={handleStatus}
           setSizeFilter={handleSize}
           setColorFilter={handleColor}
           setSortBy={handleSort}
-
           getRealSheepStatus={getRealSheepStatus}
           getAssignedProfileName={getAssignedProfileName}
           formatPrice={formatMoney}
@@ -271,15 +371,24 @@ export default function AdminSheepPage() {
 
       <AdminSheepModal
         selectedSheep={selectedSheep}
+        selectedSheepAssignedProfile={selectedSheepAssignedProfile}
+        deletingId={deletingId}
         setSelectedSheep={setSelectedSheep}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        getRealSheepStatus={getRealSheepStatus}
+        getProfileDisplayName={getProfileDisplayName}
         formatPrice={formatMoney}
+        formatMoney={formatMoney}
         formatWeight={formatWeight}
         formatDateTime={formatDateTime}
         payments={payments}
         paymentsLoading={paymentsLoading}
         paymentsSummary={paymentsSummary}
+        expectedAmount={selectedSheepExpectedAmount}
+        paidAmount={selectedSheepPaidAmount}
+        remainingAmount={selectedSheepRemainingAmount}
+        onPaymentsChanged={reloadSelectedSheepPayments}
       />
     </div>
   );
