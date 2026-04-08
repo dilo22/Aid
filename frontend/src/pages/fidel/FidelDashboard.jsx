@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { getSheepList } from "../../api/sheepApi";
 import { getPaymentsByProfileId } from "../../api/paymentsApi";
+import { getMyAppointments } from "../../api/appointmentsApi";
 import Loader from "../../components/ui/Loader";
 import StatusBadge from "../../components/ui/StatusBadge";
 import {
-  getDisplayName, getSheepStatusTheme, getPaymentStatusTheme,
-  formatMoney, formatDateTime, normalizeMoney,
+  getDisplayName, formatMoney, formatDateTime, normalizeMoney,
 } from "../../utils/fidelHelpers";
 import "../../styles/FidelPages.css";
 
@@ -17,11 +17,49 @@ const DetailCard = ({ label, value, full = false }) => (
   </div>
 );
 
+const AppointmentCard = ({ appt }) => {
+  const isSelection = appt.type === "selection";
+  const date = new Date(appt.appointment_at).toLocaleDateString("fr-FR", {
+    weekday: "long", day: "numeric", month: "long",
+  });
+  const time = new Date(appt.appointment_at).toLocaleTimeString("fr-FR", {
+    hour: "2-digit", minute: "2-digit",
+  });
+
+  return (
+    <div style={{
+      border: "1px solid #e2e8f0", borderRadius: 14,
+      padding: 16, background: "#f8fafc", display: "grid", gap: 8,
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{
+          fontSize: 12, fontWeight: 700, padding: "3px 10px",
+          borderRadius: 999,
+          background: isSelection ? "#eff6ff" : "#fef3c7",
+          color:      isSelection ? "#1d4ed8" : "#b45309",
+          border:     `1px solid ${isSelection ? "#bfdbfe" : "#fde68a"}`,
+        }}>
+          {isSelection ? "🐑 Sélection" : "📅 Sacrifice"}
+        </span>
+        <span style={{ fontSize: 12, color: "#64748b" }}>
+          {appt.status === "scheduled" ? "Planifié" :
+           appt.status === "completed" ? "Complété" : "Manqué"}
+        </span>
+      </div>
+      <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a" }}>{date}</div>
+      <div style={{ fontSize: 14, fontWeight: 600, color: "#2563eb" }}>{time}</div>
+      <div style={{ fontSize: 13, color: "#64748b" }}>📍 {appt.address}</div>
+      {appt.notes && <div style={{ fontSize: 13, color: "#475569" }}>📝 {appt.notes}</div>}
+    </div>
+  );
+};
+
 export default function FidelDashboard() {
   const { profile } = useAuth();
 
   const [sheep,         setSheep]         = useState([]);
   const [payments,      setPayments]      = useState([]);
+  const [appointments,  setAppointments]  = useState([]);
   const [loading,       setLoading]       = useState(true);
   const [selectedSheep, setSelectedSheep] = useState(null);
 
@@ -29,16 +67,19 @@ export default function FidelDashboard() {
     if (!profile?.id) return;
     try {
       setLoading(true);
-      const [sheepData, paymentsData] = await Promise.all([
+      const [sheepData, paymentsData, apptData] = await Promise.all([
         getSheepList({ page: 1, limit: 100 }),
         getPaymentsByProfileId(profile.id),
+        getMyAppointments(),
       ]);
       setSheep(Array.isArray(sheepData?.items) ? sheepData.items : []);
       setPayments(Array.isArray(paymentsData?.items) ? paymentsData.items : []);
+      setAppointments(Array.isArray(apptData?.items) ? apptData.items : []);
     } catch (error) {
       console.error("[FidelDashboard]", error);
       setSheep([]);
       setPayments([]);
+      setAppointments([]);
     } finally {
       setLoading(false);
     }
@@ -85,6 +126,13 @@ export default function FidelDashboard() {
     [selectedSheep, sheepWithSummary]
   );
 
+  const upcomingAppointments = useMemo(() =>
+    appointments
+      .filter((a) => a.status === "scheduled")
+      .sort((a, b) => new Date(a.appointment_at) - new Date(b.appointment_at)),
+    [appointments]
+  );
+
   return (
     <div className="fidel-page">
       <div className="fidel-container">
@@ -99,7 +147,6 @@ export default function FidelDashboard() {
               </p>
               <StatusBadge status={profile?.status} />
             </div>
-            {/* ✅ Bouton actualiser */}
             <button
               onClick={loadData}
               disabled={loading}
@@ -114,18 +161,29 @@ export default function FidelDashboard() {
         {/* GRILLE */}
         <div className="fidel-grid">
 
-          {/* Rendez-vous */}
+          {/* RENDEZ-VOUS */}
           <div className="fidel-card fidel-col-6">
             <div className="fidel-card-header">
               <h2 className="fidel-card-title">Rendez-vous à venir</h2>
-              <p className="fidel-card-subtitle">L'admin pourra vous attribuer des créneaux ici.</p>
+              <p className="fidel-card-subtitle">Vos créneaux attribués par l'administration.</p>
             </div>
             <div className="fidel-card-body">
-              <div className="fidel-empty">Aucun rendez-vous planifié pour le moment.</div>
+              {loading ? <Loader small /> : upcomingAppointments.length === 0 ? (
+                <div className="fidel-empty">
+                  Aucun rendez-vous planifié pour le moment.
+                  L'administration vous attribuera un créneau prochainement.
+                </div>
+              ) : (
+                <div style={{ display: "grid", gap: 12 }}>
+                  {upcomingAppointments.map((appt) => (
+                    <AppointmentCard key={appt.id} appt={appt} />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Moutons */}
+          {/* MOUTONS */}
           <div className="fidel-card fidel-col-6">
             <div className="fidel-card-header">
               <h2 className="fidel-card-title">Mes moutons</h2>
@@ -182,7 +240,7 @@ export default function FidelDashboard() {
             </div>
           </div>
 
-          {/* Info */}
+          {/* INFO */}
           <div className="fidel-card fidel-col-12">
             <div className="fidel-card-header">
               <h2 className="fidel-card-title">Informations importantes</h2>

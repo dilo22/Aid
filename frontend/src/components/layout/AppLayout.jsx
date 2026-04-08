@@ -17,6 +17,7 @@ const NAV_ITEMS = {
     { to: "/admin/organizations", end: false, icon: "🕌", label: "Organisations" },
     { to: "/admin/sheep",         end: false, icon: "🐏", label: "Moutons" },
     { to: "/admin/profiles",      end: false, icon: "👥", label: "Utilisateurs" },
+    { to: "/admin/appointments", end: false, icon: "📅", label: "Rendez-vous" },
   ],
   organization: [
     { to: "/organization",         end: true,  icon: "📊", label: "Tableau de bord" },
