@@ -248,3 +248,62 @@
   gap: 8px;
   flex-wrap: wrap;
 }
+
+/* ===== MOBILE ===== */
+@media (max-width: 768px) {
+  .sheep-table-wrap  { display: none; }
+  .sheep-mobile-list { display: grid; gap: 12px; padding: 16px; }
+}
+
+@media (min-width: 769px) {
+  .sheep-mobile-list { display: none; }
+}
+
+.sheep-mobile-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px;
+  display: grid;
+  gap: 10px;
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+
+.sheep-mobile-card:hover { box-shadow: 0 4px 16px rgba(37,99,235,0.08); }
+
+.sheep-mobile-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.sheep-mobile-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sheep-mobile-avatar    { font-size: 22px; }
+.sheep-mobile-card-name { font-size: 16px; font-weight: 700; color: #0f172a; }
+
+.sheep-mobile-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.sheep-mobile-card-value { font-weight: 600; color: #374151; }
+
+.sheep-mobile-card-actions { display: flex; gap: 8px; padding-top: 4px; }
+
+.sheep-mobile-loading,
+.sheep-mobile-empty {
+  text-align: center;
+  padding: 24px;
+  color: #94a3b8;
+  font-size: 14px;
+}
