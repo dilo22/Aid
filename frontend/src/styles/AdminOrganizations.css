@@ -259,3 +259,55 @@
   gap: 8px;
   margin-top: 4px;
 }
+
+/* ===== MOBILE ===== */
+@media (max-width: 768px) {
+  .org-table-wrap  { display: none; }
+  .org-mobile-list { display: grid; gap: 12px; padding: 16px; }
+}
+
+@media (min-width: 769px) {
+  .org-mobile-list { display: none; }
+}
+
+.org-mobile-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px;
+  display: grid;
+  gap: 10px;
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+
+.org-mobile-card:hover { box-shadow: 0 4px 16px rgba(37,99,235,0.08); }
+
+.org-mobile-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.org-mobile-card-name  { font-size: 15px; font-weight: 700; color: #0f172a; }
+
+.org-mobile-card-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.org-mobile-card-value { font-weight: 600; color: #374151; }
+
+.org-mobile-card-actions { display: flex; gap: 8px; padding-top: 4px; }
+
+.org-mobile-loading,
+.org-mobile-empty {
+  text-align: center;
+  padding: 24px;
+  color: #94a3b8;
+  font-size: 14px;
+}
+
