@@ -2,7 +2,6 @@ import Loader from "../../components/ui/Loader";
 import StatusBadge from "../../components/ui/StatusBadge";
 import "../../styles/AdminProfiles.css";
 
-// ✅ Cohérent avec le backend
 const ROLES = [
   { value: "fidel",        label: "Fidèle" },
   { value: "organization", label: "Organisation" },
@@ -60,37 +59,23 @@ export default function AdminProfilesManagementCard({
             Recherche, filtres, validation, modification et attribution des moutons.
           </p>
         </div>
-        <button onClick={onOpenCreate} className="btn-primary">
-          + Nouveau profil
-        </button>
+        <button onClick={onOpenCreate} className="btn-primary">+ Nouveau profil</button>
       </div>
 
-      {/* ERREUR */}
       {errorMessage && <div className="profiles-error">{errorMessage}</div>}
 
       {/* TOOLBAR */}
       <div className="profiles-toolbar">
-        <input
-          type="text"
-          placeholder="Rechercher par prénom, nom, email..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="profiles-input"
-          style={{ flex: 2, minWidth: 200 }}
-        />
-        {/* ✅ Rôles alignés avec le backend */}
+        <input type="text" placeholder="Rechercher par prénom, nom, email..."
+          value={search} onChange={(e) => setSearch(e.target.value)}
+          className="profiles-input" style={{ flex: 2, minWidth: 200 }} />
         <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="profiles-input">
           <option value="all">Tous les rôles</option>
-          {ROLES.map(({ value, label }) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
+          {ROLES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
         </select>
-        {/* ✅ Statuts alignés avec le backend */}
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="profiles-input">
           <option value="all">Tous les statuts</option>
-          {STATUSES.map(({ value, label }) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
+          {STATUSES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
         </select>
       </div>
 
@@ -103,45 +88,33 @@ export default function AdminProfilesManagementCard({
               <input name="first_name" value={form.first_name} onChange={onChange}
                 placeholder="Prénom" required className="profiles-input" />
             </label>
-
             <label className="profiles-label">
               Nom *
               <input name="last_name" value={form.last_name} onChange={onChange}
                 placeholder="Nom" required className="profiles-input" />
             </label>
-
             <label className="profiles-label">
               Email
               <input name="email" type="email" value={form.email} onChange={onChange}
                 placeholder="Email" className="profiles-input" />
             </label>
-
             <label className="profiles-label">
               Téléphone
               <input name="phone" value={form.phone} onChange={onChange}
                 placeholder="Téléphone" className="profiles-input" />
             </label>
-
-            {/* ✅ Rôles backend uniquement */}
             <label className="profiles-label">
               Rôle
               <select name="role" value={form.role} onChange={onChange} className="profiles-input">
-                {ROLES.map(({ value, label }) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
+                {ROLES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
               </select>
             </label>
-
-            {/* ✅ Statuts backend uniquement */}
             <label className="profiles-label">
               Statut
               <select name="status" value={form.status} onChange={onChange} className="profiles-input">
-                {STATUSES.map(({ value, label }) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
+                {STATUSES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
               </select>
             </label>
-
             <label className="profiles-label">
               Organisation
               <select name="organization_id" value={form.organization_id} onChange={onChange} className="profiles-input">
@@ -153,26 +126,22 @@ export default function AdminProfilesManagementCard({
                 ))}
               </select>
             </label>
-
             <label className="profiles-checkbox-label">
               <input type="checkbox" name="must_change_password"
                 checked={form.must_change_password} onChange={onChange} />
               Changer le mot de passe à la prochaine connexion
             </label>
           </div>
-
           <div className="profiles-form-actions">
             <button type="submit" className="btn-primary" disabled={saving}>
               {saving ? "Enregistrement..." : editingId ? "Enregistrer" : "Créer"}
             </button>
-            <button type="button" onClick={onCancel} className="btn-secondary">
-              Annuler
-            </button>
+            <button type="button" onClick={onCancel} className="btn-secondary">Annuler</button>
           </div>
         </form>
       )}
 
-      {/* TABLE */}
+      {/* ===== TABLEAU — desktop ===== */}
       <div className="profiles-table-wrap">
         <table className="profiles-table">
           <thead>
@@ -190,17 +159,13 @@ export default function AdminProfilesManagementCard({
           <tbody>
             {loading ? (
               <tr>
-                {/* ✅ colSpan correct — 8 colonnes */}
                 <td colSpan={8} className="profiles-loading-cell">
-                  <Loader small />
-                  <div>Chargement des données...</div>
+                  <Loader small /><div>Chargement...</div>
                 </td>
               </tr>
             ) : profiles.length === 0 ? (
               <tr>
-                <td colSpan={8} className="profiles-empty">
-                  Aucun profil trouvé.
-                </td>
+                <td colSpan={8} className="profiles-empty">Aucun profil trouvé.</td>
               </tr>
             ) : (
               profiles.map((item) => (
@@ -214,41 +179,28 @@ export default function AdminProfilesManagementCard({
                   <td className="profiles-td">{getAssignedSheepCountForProfile(item.id)}</td>
                   <td className="profiles-td">
                     <div className="profiles-actions">
-
                       {item.role === "fidel" && (
-                        <button type="button"
-                          className="profiles-btn-icon profiles-btn-icon--sheep"
+                        <button type="button" className="profiles-btn-icon profiles-btn-icon--sheep"
                           onClick={(e) => { e.stopPropagation(); onOpenAssignModal(item); }}
-                          title="Attribuer un mouton" aria-label="Attribuer un mouton">
-                          🐏
-                        </button>
+                          title="Attribuer un mouton">🐏</button>
                       )}
-
-                      <button type="button"
-                        className="profiles-btn-icon profiles-btn-icon--edit"
+                      <button type="button" className="profiles-btn-icon profiles-btn-icon--edit"
                         onClick={(e) => { e.stopPropagation(); onEdit(item); }}
-                        title="Modifier" aria-label="Modifier">
-                        ✏️
-                      </button>
-
+                        title="Modifier">✏️</button>
                       {item.status === "pending" && (
-                        <button type="button"
-                          className="profiles-btn-icon profiles-btn-icon--approve"
+                        <button type="button" className="profiles-btn-icon profiles-btn-icon--approve"
                           onClick={(e) => { e.stopPropagation(); onApprove(item.id); }}
                           disabled={approvingId === item.id}
-                          title="Valider" aria-label="Valider">
+                          title="Valider">
                           {approvingId === item.id ? "…" : "✓"}
                         </button>
                       )}
-
-                      <button type="button"
-                        className="profiles-btn-icon profiles-btn-icon--delete"
+                      <button type="button" className="profiles-btn-icon profiles-btn-icon--delete"
                         onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
                         disabled={deletingId === item.id}
-                        title="Supprimer" aria-label="Supprimer">
+                        title="Supprimer">
                         {deletingId === item.id ? "…" : "🗑️"}
                       </button>
-
                     </div>
                   </td>
                 </tr>
@@ -257,6 +209,71 @@ export default function AdminProfilesManagementCard({
           </tbody>
         </table>
       </div>
+
+      {/* ===== CARTES — mobile ===== */}
+      <div className="profiles-mobile-list">
+        {loading ? (
+          <div className="profiles-mobile-loading"><Loader small /></div>
+        ) : profiles.length === 0 ? (
+          <div className="profiles-mobile-empty">Aucun profil trouvé.</div>
+        ) : (
+          profiles.map((item) => (
+            <div key={item.id} className="profiles-mobile-card" onClick={() => onRowClick(item)}>
+              <div className="profiles-mobile-card-header">
+                <span className="profiles-mobile-card-name">
+                  {item.first_name || "-"} {item.last_name || ""}
+                </span>
+                <StatusBadge status={item.status} />
+              </div>
+              <div className="profiles-mobile-card-row">
+                <span>Email</span>
+                <span className="profiles-mobile-card-value">{item.email || "-"}</span>
+              </div>
+              <div className="profiles-mobile-card-row">
+                <span>Téléphone</span>
+                <span className="profiles-mobile-card-value">{item.phone || "-"}</span>
+              </div>
+              <div className="profiles-mobile-card-row">
+                <span>Rôle</span>
+                <RoleBadge role={item.role} />
+              </div>
+              <div className="profiles-mobile-card-row">
+                <span>Organisation</span>
+                <span className="profiles-mobile-card-value">{getOrganizationLabel(item)}</span>
+              </div>
+              <div className="profiles-mobile-card-row">
+                <span>Moutons</span>
+                <span className="profiles-mobile-card-value">{getAssignedSheepCountForProfile(item.id)}</span>
+              </div>
+              <div className="profiles-mobile-card-actions">
+                {item.role === "fidel" && (
+                  <button type="button" className="profiles-btn-icon profiles-btn-icon--sheep"
+                    onClick={(e) => { e.stopPropagation(); onOpenAssignModal(item); }}
+                    title="Attribuer">🐏</button>
+                )}
+                <button type="button" className="profiles-btn-icon profiles-btn-icon--edit"
+                  onClick={(e) => { e.stopPropagation(); onEdit(item); }}
+                  title="Modifier">✏️</button>
+                {item.status === "pending" && (
+                  <button type="button" className="profiles-btn-icon profiles-btn-icon--approve"
+                    onClick={(e) => { e.stopPropagation(); onApprove(item.id); }}
+                    disabled={approvingId === item.id}
+                    title="Valider">
+                    {approvingId === item.id ? "…" : "✓"}
+                  </button>
+                )}
+                <button type="button" className="profiles-btn-icon profiles-btn-icon--delete"
+                  onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
+                  disabled={deletingId === item.id}
+                  title="Supprimer">
+                  {deletingId === item.id ? "…" : "🗑️"}
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
     </div>
   );
 }
