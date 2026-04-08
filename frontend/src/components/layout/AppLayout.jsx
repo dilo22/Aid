@@ -1,10 +1,9 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import Loader from "../ui/Loader";
-import "../../styles/AppLayout.css";
 import { useIdleTimeout } from "../../hooks/useIdleTimeout";
-
+import "../../styles/AppLayout.css";
 
 const ROLE_LABELS = {
   admin:        "Administrateur",
@@ -48,14 +47,9 @@ const AppLayout = () => {
   const navigate = useNavigate();
   const [loggingOut, setLoggingOut] = useState(false);
 
-  if (!profile) return <Loader />;
-
-  const navItems = NAV_ITEMS[profile.role] || [];
-
   const handleLogout = async () => {
     if (loggingOut) return;
     if (!window.confirm("Voulez-vous vraiment vous déconnecter ?")) return;
-
     setLoggingOut(true);
     try {
       await signOut();
@@ -67,15 +61,19 @@ const AppLayout = () => {
       setLoggingOut(false);
     }
   };
-  useIdleTimeout(async () => {
-  try {
-    await signOut();
-  } catch (e) {
-    console.error("[IDLE_LOGOUT]", e);
-  } finally {
-    navigate("/login", { replace: true });
-  }
-});
+
+  // ✅ Hook appelé AVANT tout return conditionnel
+  const handleIdle = useCallback(async () => {
+    try { await signOut(); } catch (e) { console.error("[IDLE]", e); }
+    finally { navigate("/login", { replace: true }); }
+  }, [signOut, navigate]);
+
+  useIdleTimeout(handleIdle);
+
+  // ✅ Return conditionnel APRÈS tous les hooks
+  if (!profile) return <Loader />;
+
+  const navItems = NAV_ITEMS[profile.role] || [];
 
   return (
     <div className="layout">
@@ -89,7 +87,6 @@ const AppLayout = () => {
         <div className="sidebar-scroll">
           <div className="nav-section">
             <div className="nav-label">{SECTION_LABELS[profile.role]}</div>
-
             {navItems.map(({ to, end, icon, label }) => (
               <NavLink
                 key={to}
