@@ -249,3 +249,55 @@
 
 .profiles-page      { min-height: 100vh; background: #f8fafc; padding: 24px; }
 .profiles-container { max-width: 1600px; margin: 0 auto; display: grid; gap: 20px; }
+
+/* ===== MOBILE ===== */
+@media (max-width: 768px) {
+  .profiles-table-wrap  { display: none; }
+  .profiles-mobile-list { display: grid; gap: 12px; padding: 16px; }
+}
+
+@media (min-width: 769px) {
+  .profiles-mobile-list { display: none; }
+}
+
+.profiles-mobile-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px;
+  display: grid;
+  gap: 10px;
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+
+.profiles-mobile-card:hover { box-shadow: 0 4px 16px rgba(37,99,235,0.08); }
+
+.profiles-mobile-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.profiles-mobile-card-name { font-size: 15px; font-weight: 700; color: #0f172a; }
+
+.profiles-mobile-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.profiles-mobile-card-value { font-weight: 600; color: #374151; }
+
+.profiles-mobile-card-actions { display: flex; gap: 8px; padding-top: 4px; }
+
+.profiles-mobile-loading,
+.profiles-mobile-empty {
+  text-align: center;
+  padding: 24px;
+  color: #94a3b8;
+  font-size: 14px;
+}
