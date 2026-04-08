@@ -4,6 +4,7 @@ import {
   registerFidel,
   approveProfile,
   rejectProfile,
+  updateAdminProfile
 } from "../../api/profilesApi";
 import { getOrganizations } from "../../api/organizationsApi";
 import { getSheepList } from "../../api/sheepApi";
@@ -229,35 +230,51 @@ export default function AdminProfilesPage() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setErrorMessage("");
+  e.preventDefault();
+  setErrorMessage("");
 
-    const payload = cleanPayload(form);
+  const payload = cleanPayload(form);
 
-    if (!payload.first_name)      return setErrorMessage("Le prénom est obligatoire.");
-    if (!payload.last_name)       return setErrorMessage("Le nom est obligatoire.");
-    if (!payload.email)           return setErrorMessage("L'email est obligatoire.");
-    if (!payload.organization_id) return setErrorMessage("L'organisation est obligatoire.");
+  if (!payload.first_name) {
+    return setErrorMessage("Le prénom est obligatoire.");
+  }
 
-    // ✅ Edition non encore disponible — bloquer proprement
+  if (!payload.last_name) {
+    return setErrorMessage("Le nom est obligatoire.");
+  }
+
+  if (!payload.email) {
+    return setErrorMessage("L'email est obligatoire.");
+  }
+
+  if (!payload.organization_id) {
+    return setErrorMessage("L'organisation est obligatoire.");
+  }
+
+  setSaving(true);
+
+  try {
     if (editingId) {
-      return setErrorMessage("La modification de profil n'est pas encore disponible.");
+      await updateAdminProfile(editingId, payload);
+      alert("Profil modifié avec succès.");
+    } else {
+      await registerFidel(payload);
+      alert(
+        "Fidèle créé avec succès. Le mot de passe provisoire a été envoyé par email."
+      );
     }
 
-    setSaving(true);
-    try {
-      await registerFidel(payload);
-      // ✅ Plus de temporaryPassword dans la réponse — envoyé par email
-      alert("Fidèle créé avec succès. Le mot de passe provisoire a été envoyé par email.");
-      handleCancel();
-      await loadPageData();
-    } catch (error) {
-      console.error("[AdminProfilesPage] handleSubmit:", error);
-      setErrorMessage(error?.message || "Impossible d'enregistrer le profil.");
-    } finally {
-      setSaving(false);
-    }
-  };
+    handleCancel();
+    await loadPageData();
+  } catch (error) {
+    console.error("[AdminProfilesPage] handleSubmit:", error);
+    setErrorMessage(
+      error?.message || "Impossible d'enregistrer le profil."
+    );
+  } finally {
+    setSaving(false);
+  }
+};
 
   const handleDelete = async (id) => {
     if (!window.confirm("Supprimer ce profil définitivement ?")) return;

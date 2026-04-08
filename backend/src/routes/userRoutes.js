@@ -9,6 +9,7 @@ import {
   getMe,
   updateMe,
   deleteFidelByAdmin,
+  updateFidelByAdmin,
 } from "../controllers/userController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
 import { requireRole } from "../middlewares/roleMiddleware.js";
@@ -32,5 +33,6 @@ router.patch("/:userId/reject", rejectUser);
 router.post("/:userId/assign-sheep", assignSheepToFidel);
 router.post("/create-fidel", createFidelByAdmin);
 router.delete("/:userId", deleteFidelByAdmin);
+router.patch("/:userId", updateFidelByAdmin);
 
 export default router;

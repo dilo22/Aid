@@ -559,7 +559,136 @@ export const createFidelByAdmin = async (req, res, next) => {
     next(error);
   }
 };
+export const updateFidelByAdmin = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
 
+    if (!isValidUUID(userId)) {
+      throw new ApiError(400, "ID invalide");
+    }
+
+    const first_name = String(req.body.first_name || "").trim();
+    const last_name = String(req.body.last_name || "").trim();
+    const email = normalizeEmail(req.body.email);
+    const phone = String(req.body.phone || "").trim() || null;
+    const organization_id = req.body.organization_id || null;
+    const status = req.body.status || "pending";
+    const must_change_password = Boolean(req.body.must_change_password);
+
+    if (!first_name) throw new ApiError(400, "Le prénom est obligatoire");
+    if (!last_name) throw new ApiError(400, "Le nom est obligatoire");
+    if (!email) throw new ApiError(400, "L'email est obligatoire");
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new ApiError(400, "Format d'email invalide");
+    }
+
+    const { data: existing, error: existingError } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .eq("role", "fidel")
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (existingError) {
+      console.error("[UPDATE_FIDEL_BY_ADMIN][EXISTING]", existingError);
+      throw new ApiError(500, "Erreur serveur");
+    }
+
+    if (!existing) {
+      throw new ApiError(404, "Fidèle introuvable");
+    }
+
+    if (organization_id) {
+      if (!isValidUUID(organization_id)) {
+        throw new ApiError(400, "ID organisation invalide");
+      }
+
+      const { data: org, error: orgError } = await supabase
+        .from("organizations")
+        .select("id, is_active, deleted_at")
+        .eq("id", organization_id)
+        .maybeSingle();
+
+      if (orgError) {
+        console.error("[UPDATE_FIDEL_BY_ADMIN][ORG]", orgError);
+        throw new ApiError(500, "Erreur serveur");
+      }
+
+      if (!org) {
+        throw new ApiError(400, "Organisation invalide");
+      }
+
+      if (!org.is_active || org.deleted_at) {
+        throw new ApiError(400, "Organisation indisponible");
+      }
+    }
+
+    const { data: emailOwner, error: emailOwnerError } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("email", email)
+      .neq("id", userId)
+      .maybeSingle();
+
+    if (emailOwnerError) {
+      console.error("[UPDATE_FIDEL_BY_ADMIN][EMAIL_CHECK]", emailOwnerError);
+      throw new ApiError(500, "Erreur serveur");
+    }
+
+    if (emailOwner) {
+      throw new ApiError(409, "Cet email est déjà utilisé");
+    }
+
+    const updates = {
+      first_name,
+      last_name,
+      email,
+      phone,
+      organization_id,
+      status,
+      must_change_password,
+      updated_at: new Date().toISOString(),
+      updated_by: req.user.id,
+    };
+
+    const { data: updated, error: updateError } = await supabase
+      .from("profiles")
+      .update(updates)
+      .eq("id", userId)
+      .eq("role", "fidel")
+      .is("deleted_at", null)
+      .select(PROFILE_SELECT)
+      .maybeSingle();
+
+    if (updateError) {
+      console.error("[UPDATE_FIDEL_BY_ADMIN][UPDATE]", updateError);
+      throw new ApiError(500, "Impossible de modifier le fidèle");
+    }
+
+    if (!updated) {
+      throw new ApiError(404, "Fidèle introuvable");
+    }
+
+    await insertAuditLog({
+      table_name: "profiles",
+      record_id: userId,
+      action: "update",
+      organization_id: existing.organization_id || organization_id || null,
+      actor_user_id: req.user.id,
+      old_data: existing,
+      new_data: updated,
+    });
+
+    res.json({
+      message: "Profil modifié avec succès",
+      profile: updated,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 export const assignSheepToFidel = async (req, res, next) => {
   try {
     const { userId } = req.params;

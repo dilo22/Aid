@@ -115,7 +115,18 @@ export const updateOrganizationFidel = async (id, payload) => {
 
   return data;
 };
-
+export const updateAdminProfile = async (id, payload) => {
+  const { data } = await api.patch(`/profiles/${id}`, {
+    first_name: payload.first_name,
+    last_name: payload.last_name,
+    email: payload.email,
+    phone: payload.phone,
+    organization_id: payload.organization_id,
+    status: payload.status,
+    must_change_password: payload.must_change_password,
+  });
+  return data;
+};
 export const deleteOrganizationFidel = async (id) => {
   const { data } = await api.delete(`/organizations/me/fidels/${id}`);
   return data;
