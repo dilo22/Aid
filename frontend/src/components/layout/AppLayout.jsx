@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { useAuth, useIdleTimeout } from "../../contexts/AuthContext";
+import { useAuth } from "../../contexts/AuthContext";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import Loader from "../ui/Loader";
 import "../../styles/AppLayout.css";
+import { useIdleTimeout } from "../../hooks/useIdleTimeout";
 
 
 const ROLE_LABELS = {
