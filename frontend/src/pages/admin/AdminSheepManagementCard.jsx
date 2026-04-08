@@ -126,7 +126,7 @@ export default function AdminSheepManagementCard({
             <label className="sheep-label">
               Prix initial (€)
               <input name="price" type="number" value={form.price} onChange={onChange}
-                placeholder="Prix" min="0" className="sheep-input" />
+                placeholder="Prix" min="0" step="0.01" className="sheep-input" />
             </label>
 
             <label className="sheep-label">

@@ -10,7 +10,8 @@ const ALLOWED_PAYMENT_METHODS = [
   "other",
 ];
 const PAYMENT_STATUS = ["unpaid", "partial", "paid", "overpaid", "cancelled"];
-
+const isValidUUID = (id) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 const normalizeMoney = (value) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
