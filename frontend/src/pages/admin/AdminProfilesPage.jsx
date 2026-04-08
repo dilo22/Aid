@@ -4,7 +4,8 @@ import {
   registerFidel,
   approveProfile,
   rejectProfile,
-  updateAdminProfile
+  deleteProfile,
+  updateAdminProfile,
 } from "../../api/profilesApi";
 import { getOrganizations } from "../../api/organizationsApi";
 import { getSheepList } from "../../api/sheepApi";
@@ -277,10 +278,35 @@ export default function AdminProfilesPage() {
 };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Supprimer ce profil définitivement ?")) return;
-    // ✅ TODO — brancher deleteProfile quand disponible côté backend
-    setErrorMessage("La suppression de profil n'est pas encore disponible.");
-  };
+  if (!window.confirm("Supprimer ce profil ?")) return;
+
+  setDeletingId(id);
+  setErrorMessage("");
+
+  try {
+    await deleteProfile(id);
+    await loadPageData();
+
+    if (selectedProfile?.id === id) {
+      setSelectedProfile(null);
+    }
+
+    if (assignProfile?.id === id) {
+      setAssignProfile(null);
+    }
+
+    if (editingId === id) {
+      handleCancel();
+    }
+  } catch (error) {
+    console.error("[AdminProfilesPage] handleDelete:", error);
+    setErrorMessage(
+      error?.message || "Impossible de supprimer le profil."
+    );
+  } finally {
+    setDeletingId(null);
+  }
+};
 
   const handleApprove = async (id) => {
     setApprovingId(id);
