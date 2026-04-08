@@ -1,22 +1,26 @@
 AID/
 ├── backend/
-│   ├── node_modules/
+│   ├── api/
+│   │   └── index.js
 │   ├── src/
 │   │   ├── config/
 │   │   │   └── supabase.js
 │   │   ├── controllers/
 │   │   │   ├── authController.js
 │   │   │   ├── organizationController.js
+│   │   │   ├── paymentController.js
 │   │   │   ├── sheepController.js
 │   │   │   └── userController.js
 │   │   ├── middlewares/
 │   │   │   ├── authMiddleware.js
 │   │   │   ├── errorMiddleware.js
+│   │   │   ├── rateLimitMiddleware.js
 │   │   │   └── roleMiddleware.js
 │   │   ├── routes/
 │   │   │   ├── authRoutes.js
 │   │   │   ├── index.js
 │   │   │   ├── organizationRoutes.js
+│   │   │   ├── paymentRoutes.js
 │   │   │   ├── sheepRoutes.js
 │   │   │   └── userRoutes.js
 │   │   ├── utils/
@@ -24,27 +28,34 @@ AID/
 │   │   ├── app.js
 │   │   └── server.js
 │   ├── .env
+│   ├── package.json
 │   ├── package-lock.json
-│   └── package.json
+│   └── vercel.json
 │
 ├── frontend/
-│   ├── node_modules/
 │   ├── public/
+│   │   ├── favicon.svg
+│   │   ├── icons.svg
+│   │   └── _redirects
 │   ├── src/
 │   │   ├── api/
 │   │   │   ├── authApi.js
 │   │   │   ├── client.js
 │   │   │   ├── organizationsApi.js
+│   │   │   ├── paymentsApi.js
 │   │   │   ├── profilesApi.js
 │   │   │   ├── sheepApi.js
 │   │   │   └── usersApi.js
 │   │   ├── assets/
+│   │   │   ├── hero.png
+│   │   │   ├── react.svg
+│   │   │   └── vite.svg
 │   │   ├── components/
 │   │   │   ├── layout/
 │   │   │   │   ├── AppLayout.jsx
 │   │   │   │   ├── HomeRedirect.jsx
-│   │   │   │   └── ProtectedRoute.jsx
-│   │   │   ├── sheep/
+│   │   │   │   ├── ProtectedRoute.jsx
+│   │   │   │   └── PublicOnlyRoute.jsx
 │   │   │   └── ui/
 │   │   │       ├── Loader.jsx
 │   │   │       └── StatusBadge.jsx
@@ -63,29 +74,54 @@ AID/
 │   │   │   │   ├── AdminOrganizationsModal.jsx
 │   │   │   │   ├── AdminOrganizationsPage.jsx
 │   │   │   │   ├── AdminProfilesManagementCard.jsx
-│   │   │   │   ├── AdminProfilesModal.jsx
+│   │   │   │   ├── AdminProfilesModals.jsx
 │   │   │   │   ├── AdminProfilesPage.jsx
 │   │   │   │   ├── AdminSheepManagementCard.jsx
 │   │   │   │   ├── AdminSheepModal.jsx
 │   │   │   │   └── AdminSheepPage.jsx
 │   │   │   ├── auth/
+│   │   │   │   ├── ChangePasswordPage.jsx
+│   │   │   │   ├── ForgotPasswordPage.jsx
 │   │   │   │   ├── LoginPage.jsx
-│   │   │   │   └── RegisterPage.jsx
+│   │   │   │   ├── RegisterPage.jsx
+│   │   │   │   └── ResetPasswordPage.jsx
 │   │   │   ├── fidel/
 │   │   │   │   ├── ContactPage.jsx
 │   │   │   │   ├── FidelDashboard.jsx
 │   │   │   │   └── FidelProfilePage.jsx
-│   │   │   ├── orrganization/
-│   │   │   │   └── OrganizationDashboard.jsx
-                    OrganizationContactPage.jsx
-                    OrganizationProfilesPage.jsx
+│   │   │   ├── organization/
+│   │   │   │   ├── OrganizationContactPage.jsx
+│   │   │   │   ├── OrganizationDashboard.jsx
+│   │   │   │   └── OrganizationProfilesPage.jsx
+│   │   │   ├── HomePage.jsx
 │   │   │   ├── NotFoundPage.jsx
 │   │   │   └── PendingApprovalPage.jsx
 │   │   ├── router/
 │   │   │   └── index.jsx
 │   │   ├── styles/
-│   │   │   └── admin-dashboard.css
+│   │   │   ├── AdminDashboard.css
+│   │   │   ├── AdminOrganizations.css
+│   │   │   ├── AdminOrganizationsModal.css
+│   │   │   ├── AdminProfiles.css
+│   │   │   ├── AdminProfilesModals.css
+│   │   │   ├── AdminSheep.css
+│   │   │   ├── AdminSheepCard.css
+│   │   │   ├── AdminSheepModal.css
+│   │   │   ├── AppLayout.css
+│   │   │   ├── AuthPages.css
+│   │   │   ├── ChangePasswordPage.css
+│   │   │   ├── FidelPages.css
+│   │   │   ├── ForgotPasswordPage.css
+│   │   │   ├── HomePage.css
+│   │   │   ├── Loader.css
+│   │   │   ├── NotFoundPage.css
+│   │   │   ├── OrganizationPages.css
+│   │   │   ├── PendingApprovalPage.css
+│   │   │   └── StatusBadge.css
 │   │   ├── utils/
+│   │   │   ├── authErrors.js
+│   │   │   ├── authGuards.js
+│   │   │   ├── fidelHelpers.js
 │   │   │   ├── roleRedirect.js
 │   │   │   └── sheepUtils.js
 │   │   ├── App.css
@@ -96,10 +132,12 @@ AID/
 │   ├── .gitignore
 │   ├── eslint.config.js
 │   ├── index.html
-│   ├── package-lock.json
 │   ├── package.json
+│   ├── package-lock.json
 │   ├── README.md
-│   ├── vite.config.js
-│   └── package.json
+│   └── vite.config.js
 │
+├── .gitignore
+├── package.json
+├── vercel.json
 └── SHEMA.md

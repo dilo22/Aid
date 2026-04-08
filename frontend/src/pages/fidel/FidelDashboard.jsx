@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { getSheepList } from "../../api/sheepApi";
 import { getPaymentsByProfileId } from "../../api/paymentsApi";
@@ -10,18 +10,11 @@ import {
 } from "../../utils/fidelHelpers";
 import "../../styles/FidelPages.css";
 
-// ✅ Défini avant le composant
 const DetailCard = ({ label, value, full = false }) => (
   <div className={`fidel-detail-card${full ? " fidel-detail-card--full" : ""}`}>
     <div className="fidel-detail-label">{label}</div>
     <div className="fidel-detail-value">{value ?? "-"}</div>
   </div>
-);
-
-const Badge = ({ theme, children }) => (
-  <span className="fidel-badge" style={{
-    background: theme.background, color: theme.color, borderColor: theme.border?.replace("1px solid ", ""),
-  }}>{children}</span>
 );
 
 export default function FidelDashboard() {
@@ -32,32 +25,27 @@ export default function FidelDashboard() {
   const [loading,       setLoading]       = useState(true);
   const [selectedSheep, setSelectedSheep] = useState(null);
 
-  useEffect(() => {
+  const loadData = useCallback(async () => {
     if (!profile?.id) return;
-
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        const [sheepData, paymentsData] = await Promise.all([
-          // ✅ limit réduit — un fidèle n'aura jamais 1000 moutons
-          getSheepList({ page: 1, limit: 20 }),
-          getPaymentsByProfileId(profile.id),
-        ]);
-        setSheep(Array.isArray(sheepData?.items) ? sheepData.items : []);
-        setPayments(Array.isArray(paymentsData?.items) ? paymentsData.items : []);
-      } catch (error) {
-        console.error("[FidelDashboard]", error);
-        setSheep([]);
-        setPayments([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
+    try {
+      setLoading(true);
+      const [sheepData, paymentsData] = await Promise.all([
+        getSheepList({ page: 1, limit: 100 }),
+        getPaymentsByProfileId(profile.id),
+      ]);
+      setSheep(Array.isArray(sheepData?.items) ? sheepData.items : []);
+      setPayments(Array.isArray(paymentsData?.items) ? paymentsData.items : []);
+    } catch (error) {
+      console.error("[FidelDashboard]", error);
+      setSheep([]);
+      setPayments([]);
+    } finally {
+      setLoading(false);
+    }
   }, [profile?.id]);
 
-  // ✅ Escape + scroll lock
+  useEffect(() => { loadData(); }, [loadData]);
+
   useEffect(() => {
     if (!selectedSheep) return;
     const onKey = (e) => { if (e.key === "Escape") setSelectedSheep(null); };
@@ -103,11 +91,24 @@ export default function FidelDashboard() {
 
         {/* HERO */}
         <div className="fidel-hero-card">
-          <h1 className="fidel-hero-title">Bonjour {getDisplayName(profile)}</h1>
-          <p className="fidel-hero-subtitle">
-            Retrouvez ici vos moutons attribués et le suivi de votre dossier.
-          </p>
-          <StatusBadge status={profile?.status} />
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div style={{ display: "grid", gap: 10 }}>
+              <h1 className="fidel-hero-title">Bonjour {getDisplayName(profile)}</h1>
+              <p className="fidel-hero-subtitle">
+                Retrouvez ici vos moutons attribués et le suivi de votre dossier.
+              </p>
+              <StatusBadge status={profile?.status} />
+            </div>
+            {/* ✅ Bouton actualiser */}
+            <button
+              onClick={loadData}
+              disabled={loading}
+              className="btn-secondary"
+              style={{ flexShrink: 0, marginTop: 4 }}
+            >
+              {loading ? "..." : "↻ Actualiser"}
+            </button>
+          </div>
         </div>
 
         {/* GRILLE */}
@@ -159,10 +160,10 @@ export default function FidelDashboard() {
 
                       <div className="fidel-summary-grid">
                         {[
-                          ["Prix final",     formatMoney(item.expectedAmount)],
-                          ["Déjà payé",      formatMoney(item.paidAmount)],
-                          ["Reste à payer",  formatMoney(item.remainingAmount)],
-                          ["Nb paiements",   item.sheepPayments.length],
+                          ["Prix final",    formatMoney(item.expectedAmount)],
+                          ["Déjà payé",     formatMoney(item.paidAmount)],
+                          ["Reste à payer", formatMoney(item.remainingAmount)],
+                          ["Nb paiements",  item.sheepPayments.length],
                         ].map(([label, value]) => (
                           <div key={label} className="fidel-summary-box">
                             <div className="fidel-summary-label">{label}</div>
