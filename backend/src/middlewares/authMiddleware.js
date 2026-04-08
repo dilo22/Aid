@@ -11,7 +11,10 @@ export const requireAuth = async (req, res, next) => {
 
     const token = authHeader.split(" ")[1];
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
       throw new ApiError(401, "Token invalide ou expiré");
@@ -33,7 +36,6 @@ export const requireAuth = async (req, res, next) => {
       throw new ApiError(404, "Profil introuvable");
     }
 
-    // ✅ Vérification du statut
     if (profile.status === "rejected") {
       throw new ApiError(403, "Compte rejeté");
     }
@@ -42,17 +44,17 @@ export const requireAuth = async (req, res, next) => {
       throw new ApiError(403, "Compte en attente de validation");
     }
 
-    // ✅ Vérification must_change_password
-    // Bloque toutes les routes sauf /auth/change-password
-    if (profile.must_change_password && !req.path.includes("/auth/change-password")) {
+    const isChangePasswordRoute = req.originalUrl.includes("/auth/change-password");
+
+    if (profile.must_change_password && !isChangePasswordRoute) {
       throw new ApiError(403, "Vous devez changer votre mot de passe");
     }
 
-    // ✅ Vérification organisation
     if (profile.role === "organization" && profile.organization_id) {
       if (!profile.organization) {
         throw new ApiError(403, "Organisation introuvable");
       }
+
       if (!profile.organization.is_active || profile.organization.deleted_at) {
         throw new ApiError(403, "Organisation désactivée");
       }
@@ -69,7 +71,6 @@ export const requireAuth = async (req, res, next) => {
 
     req.profile = profile;
     next();
-
   } catch (error) {
     next(error);
   }

@@ -5,10 +5,11 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
 });
 
-// ✅ Intercepteur qui récupère TOUJOURS le token frais avant chaque requête
-// Élimine la race condition + garantit qu'un token expiré est refreshé automatiquement
 api.interceptors.request.use(async (config) => {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
   const token = session?.access_token;
 
   if (token) {
@@ -18,26 +19,26 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
-// ✅ Intercepteur de réponse — gestion globale des erreurs
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    const status  = error.response?.status;
-    const message = error.response?.data?.message || error.message || "Erreur réseau";
+  async (error) => {
+    const status = error.response?.status;
+    const message =
+      error.response?.data?.message || error.message || "Erreur réseau";
 
-    // ✅ Session expirée → déconnexion propre
     if (status === 401) {
-      supabase.auth.signOut();
+      await supabase.auth.signOut();
       window.location.href = "/login";
-      return Promise.reject(new Error("Session expirée, veuillez vous reconnecter"));
+      return Promise.reject(error);
     }
 
-    // ✅ Trop de requêtes → message clair
     if (status === 429) {
-      return Promise.reject(new Error("Trop de requêtes. Veuillez patienter."));
+      error.message = "Trop de requêtes. Veuillez patienter.";
+      return Promise.reject(error);
     }
 
-    return Promise.reject(new Error(message));
+    error.message = message;
+    return Promise.reject(error);
   }
 );
 

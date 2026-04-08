@@ -42,6 +42,11 @@ export const getProfiles = async (filters = {}) => {
   return profiles;
 };
 
+export const getMyProfile = async () => {
+  const { data } = await api.get("/profiles/me");
+  return data;
+};
+
 export const registerFidel = async (payload) => {
   const { data } = await api.post("/profiles/create-fidel", {
     first_name: payload.first_name,
@@ -74,6 +79,7 @@ export const updateProfile = async (payload) => {
 
 export const getOrganizationFidels = async (params = {}) => {
   const searchParams = new URLSearchParams();
+
   if (params.search) searchParams.set("search", params.search);
   if (params.status && params.status !== "all") {
     searchParams.set("status", params.status);
@@ -83,6 +89,7 @@ export const getOrganizationFidels = async (params = {}) => {
   const { data } = await api.get(
     `/organizations/me/fidels${query ? `?${query}` : ""}`
   );
+
   return data;
 };
 
@@ -93,6 +100,7 @@ export const createOrganizationFidel = async (payload) => {
     email: payload.email,
     phone: payload.phone,
   });
+
   return data;
 };
 
@@ -104,6 +112,7 @@ export const updateOrganizationFidel = async (id, payload) => {
     phone: payload.phone,
     status: payload.status,
   });
+
   return data;
 };
 
@@ -116,5 +125,5 @@ export const deleteProfile = async (id) => {
   const { data } = await api.delete(`/profiles/${id}`);
   return data;
 };
-// Optionnel : on peut garder createProfile comme alias admin
+
 export const createProfile = registerFidel;
