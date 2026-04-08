@@ -67,43 +67,43 @@ const AdminDashboard = () => {
   });
 
   useEffect(() => {
-    const loadStats = async () => {
-      try {
-        setLoading(true);
+  const loadStats = async () => {
+    try {
+      setLoading(true);
 
-        const [pending, approved, orgs, sheep] = await Promise.allSettled([
-          getPendingProfiles(),
-          getApprovedProfiles(), // ✅ plus de status "active" inexistant
-          getOrganizations(),
-          getSheepList({ page: 1, limit: 100 }), // ✅ aligné avec le plafond backend
-        ]);
+      const [pending, approved, orgs, sheepTotal, sheepAvailable] = await Promise.allSettled([
+        getPendingProfiles(),
+        getApprovedProfiles(),
+        getOrganizations(),
+        // ✅ limit: 1 — on veut juste meta.total, pas les données
+        getSheepList({ page: 1, limit: 1 }),
+        getSheepList({ page: 1, limit: 1, status: "available" }),
+      ]);
 
-        const pendingData  = pending.status  === "fulfilled" ? (pending.value  ?? []) : [];
-        const approvedData = approved.status === "fulfilled" ? (approved.value ?? []) : [];
-        const orgsData     = orgs.status     === "fulfilled" ? (orgs.value     ?? []) : [];
+      const pendingData  = pending.status  === "fulfilled" ? (pending.value  ?? []) : [];
+      const approvedData = approved.status === "fulfilled" ? (approved.value ?? []) : [];
+      const orgsData     = orgs.status     === "fulfilled" ? (orgs.value     ?? []) : [];
 
-        // ✅ On utilise meta.total pour le vrai total, pas la longueur du tableau paginé
-        const sheepMeta      = sheep.status === "fulfilled" ? sheep.value?.meta      : null;
-        const sheepItems     = sheep.status === "fulfilled" ? (sheep.value?.items ?? []) : [];
-        const sheepTotal     = sheepMeta?.total ?? sheepItems.length;
-        const sheepAvailable = sheepItems.filter((s) => s.status === "available").length;
+      // ✅ meta.total = vrai total en base, pas limité par la pagination
+      const totalCount     = sheepTotal.status     === "fulfilled" ? (sheepTotal.value?.meta?.total     ?? 0) : 0;
+      const availableCount = sheepAvailable.status === "fulfilled" ? (sheepAvailable.value?.meta?.total ?? 0) : 0;
 
-        setStats({
-          organizations:    orgsData.length,
-          pendingProfiles:  pendingData.length,
-          approvedProfiles: approvedData.length,
-          sheepTotal,
-          sheepAvailable,
-        });
-      } catch (error) {
-        console.error("[AdminDashboard] loadStats error:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+      setStats({
+        organizations:    orgsData.length,
+        pendingProfiles:  pendingData.length,
+        approvedProfiles: approvedData.length,
+        sheepTotal:       totalCount,
+        sheepAvailable:   availableCount,
+      });
+    } catch (error) {
+      console.error("[AdminDashboard] loadStats error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    loadStats();
-  }, []);
+  loadStats();
+}, []);
 
   const profilesTotal = stats.pendingProfiles + stats.approvedProfiles;
 
