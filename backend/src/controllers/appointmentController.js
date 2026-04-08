@@ -246,25 +246,25 @@ export const publishAppointments = async (req, res, next) => {
 
     // ✅ Envoi des emails en parallèle (par batch de 10)
     let emailsSent = 0;
-    for (let i = 0; i < appointments.length; i += 10) {
-      const batch = appointments.slice(i, i + 10);
-      await Promise.allSettled(
-        batch.map(async (appt) => {
-          try {
-            await sendAppointmentEmail({
-              to:            appt.fidel.email,
-              firstName:     appt.fidel.first_name,
-              type:          appt.type,
-              appointmentAt: appt.appointment_at,
-              address:       appt.address,
-            });
-            emailsSent++;
-          } catch (e) {
-            console.error(`[EMAIL] failed for ${appt.fidel.email}:`, e);
-          }
-        })
-      );
+    for (let i = 0; i < appointments.length; i++) {
+      const appt = appointments[i];
+      try {
+        await sendAppointmentEmail({
+          to:            appt.fidel.email,
+          firstName:     appt.fidel.first_name,
+          type:          appt.type,
+          appointmentAt: appt.appointment_at,
+          address:       appt.address,
+        });
+        emailsSent++;
+      } catch (e) {
+        console.error(`[EMAIL] failed for ${appt.fidel.email}:`, e);
+      }
+      if (i < appointments.length - 1) {
+        await sleep(250);
+      }
     }
+    
 
     res.json({
       message:    `RDV publiés — ${emailsSent}/${appointments.length} emails envoyés`,

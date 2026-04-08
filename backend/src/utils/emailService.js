@@ -2,14 +2,16 @@ import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM   = "AID Platform <noreply@aid-adha.space>";
-
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 export const sendAppointmentEmail = async ({ to, firstName, type, appointmentAt, address }) => {
   const typeLabel  = type === "selection" ? "Sélection du mouton" : "Sacrifice & récupération";
-  const date       = new Date(appointmentAt).toLocaleDateString("fr-FR", {
+  const date = new Date(appointmentAt).toLocaleDateString("fr-FR", {
     weekday: "long", day: "numeric", month: "long", year: "numeric",
+    timeZone: "Europe/Paris", // ✅ forcer Paris
   });
-  const heure      = new Date(appointmentAt).toLocaleTimeString("fr-FR", {
+  const heure = new Date(appointmentAt).toLocaleTimeString("fr-FR", {
     hour: "2-digit", minute: "2-digit",
+    timeZone: "Europe/Paris", // ✅ forcer Paris
   });
 
   await resend.emails.send({
