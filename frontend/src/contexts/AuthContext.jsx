@@ -3,7 +3,7 @@ import { supabase } from "../lib/supabase";
 import { getMe } from "../api/authApi";
 
 const AuthContext = createContext(null);
-const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+const IDLE_TIMEOUT_MS = 1 * 60 * 1000;
 const EVENTS = ["mousemove", "mousedown", "keydown", "touchstart", "scroll", "click"];
 export const useIdleTimeout = (onTimeout) => {
   const timerRef = useRef(null);
