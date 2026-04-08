@@ -2,11 +2,9 @@ import { useEffect, useState, useCallback } from "react";
 import {
   getAppointmentSettings, updateAppointmentSettings,
   generateAppointments, getAppointments,
-  publishAppointments, exportFideles,
+  publishAppointments, exportFideles, updateAppointment,
 } from "../../api/appointmentsApi";
 import "../../styles/AdminAppointments.css";
-
-const SLOT_HOURS = [8, 9, 10, 11, 14, 15, 16, 17];
 
 const formatDate = (iso) => new Date(iso).toLocaleDateString("fr-FR", {
   weekday: "short", day: "numeric", month: "short",
@@ -26,17 +24,117 @@ const groupByDay = (appointments) => {
   return groups;
 };
 
+const SLOT_HOURS = [8, 9, 10, 11, 14, 15, 16, 17];
+
+// ===== MODAL MODIFICATION =====
+const EditModal = ({ appt, onClose, onSaved }) => {
+  const currentDate = appt.appointment_at.split("T")[0];
+  const currentHour = new Date(appt.appointment_at).getHours();
+
+  const [date,   setDate]   = useState(currentDate);
+  const [hour,   setHour]   = useState(currentHour);
+  const [notes,  setNotes]  = useState(appt.notes || "");
+  const [saving, setSaving] = useState(false);
+  const [error,  setError]  = useState("");
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [onClose]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      const appointment_at = new Date(`${date}T${String(hour).padStart(2, "0")}:00:00`).toISOString();
+      await updateAppointment(appt.id, { appointment_at, notes: notes || null });
+      onSaved();
+      onClose();
+    } catch (e) {
+      setError(e?.message || "Erreur lors de la sauvegarde.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="appt-modal-overlay" onClick={onClose}>
+      <div className="appt-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="appt-modal-header">
+          <h2 className="appt-modal-title">Modifier le rendez-vous</h2>
+          <button className="btn-secondary" onClick={onClose}>Fermer</button>
+        </div>
+
+        <div className="appt-modal-body">
+          {/* Fidèle info */}
+          <div className="appt-modal-fidel">
+            <div className="appt-modal-fidel-name">
+              {appt.fidel?.first_name} {appt.fidel?.last_name}
+            </div>
+            <div className="appt-modal-fidel-email">{appt.fidel?.email}</div>
+          </div>
+
+          {/* Date */}
+          <label className="appt-settings-field">
+            <span className="appt-settings-label">Date</span>
+            <input type="date" className="appt-settings-input"
+              value={date} onChange={(e) => setDate(e.target.value)} />
+          </label>
+
+          {/* Heure */}
+          <label className="appt-settings-field">
+            <span className="appt-settings-label">Créneau horaire</span>
+            <select className="appt-settings-input"
+              value={hour} onChange={(e) => setHour(Number(e.target.value))}>
+              {SLOT_HOURS.map((h) => (
+                <option key={h} value={h}>
+                  {String(h).padStart(2, "0")}:00 — {String(h + 1).padStart(2, "0")}:00
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {/* Notes */}
+          <label className="appt-settings-field">
+            <span className="appt-settings-label">Notes (optionnel)</span>
+            <textarea className="appt-settings-input" rows={3}
+              style={{ resize: "vertical" }}
+              value={notes} onChange={(e) => setNotes(e.target.value)}
+              placeholder="Instructions particulières..." />
+          </label>
+
+          {error && <div className="appt-error">{error}</div>}
+        </div>
+
+        <div className="appt-modal-footer">
+          <button className="btn-secondary" onClick={onClose}>Annuler</button>
+          <button className="btn-primary" onClick={handleSave} disabled={saving}>
+            {saving ? "Sauvegarde..." : "Enregistrer"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ===== PAGE PRINCIPALE =====
 export default function AdminAppointmentsPage() {
-  const [settings,     setSettings]     = useState(null);
-  const [editSettings, setEditSettings] = useState(null);
-  const [appointments, setAppointments] = useState([]);
-  const [activeType,   setActiveType]   = useState("selection");
-  const [loading,      setLoading]      = useState(true);
-  const [generating,   setGenerating]   = useState(false);
-  const [publishing,   setPublishing]   = useState(false);
-  const [exporting,    setExporting]    = useState(false);
+  const [settings,       setSettings]       = useState(null);
+  const [editSettings,   setEditSettings]   = useState(null);
+  const [appointments,   setAppointments]   = useState([]);
+  const [activeType,     setActiveType]     = useState("selection");
+  const [loading,        setLoading]        = useState(true);
+  const [generating,     setGenerating]     = useState(false);
+  const [publishing,     setPublishing]     = useState(false);
+  const [exporting,      setExporting]      = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
-  const [message,      setMessage]      = useState({ type: "", text: "" });
+  const [editingAppt,    setEditingAppt]    = useState(null);
+  const [message,        setMessage]        = useState({ type: "", text: "" });
 
   const showMsg = (type, text) => {
     setMessage({ type, text });
@@ -253,25 +351,55 @@ export default function AdminAppointmentsPage() {
                 </span>
               </div>
               <div className="appt-card-body">
-                {grouped[day].map((appt) => (
-                  <div key={appt.id} className="appt-slot">
-                    <div>
-                      <div className="appt-slot-time">{formatTime(appt.appointment_at)}</div>
-                      <div className="appt-slot-name">
-                        {appt.fidel?.first_name} {appt.fidel?.last_name}
+                {grouped[day]
+                  .sort((a, b) => new Date(a.appointment_at) - new Date(b.appointment_at))
+                  .map((appt) => (
+                    <div key={appt.id} className="appt-slot">
+                      <div style={{ flex: 1 }}>
+                        <div className="appt-slot-time">{formatTime(appt.appointment_at)}</div>
+                        <div className="appt-slot-name">
+                          {appt.fidel?.first_name} {appt.fidel?.last_name}
+                        </div>
+                        <div className="appt-slot-email">{appt.fidel?.email}</div>
+                        {appt.notes && (
+                          <div style={{ fontSize: 12, color: "#f59e0b", marginTop: 4 }}>
+                            📝 {appt.notes}
+                          </div>
+                        )}
                       </div>
-                      <div className="appt-slot-email">{appt.fidel?.email}</div>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <span className="appt-slot-badge">
+                          {appt.status === "scheduled" ? "Planifié" :
+                           appt.status === "completed" ? "Complété" : "Manqué"}
+                        </span>
+                        {/* ✅ Bouton modifier */}
+                        <button
+                          onClick={() => setEditingAppt(appt)}
+                          style={{
+                            width: 32, height: 32, border: "1px solid #e2e8f0",
+                            borderRadius: 8, background: "#f8fafc", cursor: "pointer",
+                            fontSize: 14, display: "grid", placeItems: "center",
+                          }}
+                          title="Modifier"
+                        >
+                          ✏️
+                        </button>
+                      </div>
                     </div>
-                    <span className="appt-slot-badge">
-                      {appt.status === "scheduled"  ? "Planifié"  :
-                       appt.status === "completed"  ? "Complété"  : "Manqué"}
-                    </span>
-                  </div>
-                ))}
+                  ))}
               </div>
             </div>
           ))}
         </div>
+      )}
+
+      {/* MODAL MODIFICATION */}
+      {editingAppt && (
+        <EditModal
+          appt={editingAppt}
+          onClose={() => setEditingAppt(null)}
+          onSaved={loadAppointments}
+        />
       )}
     </div>
   );

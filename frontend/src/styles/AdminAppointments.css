@@ -141,3 +141,58 @@
 
 .appt-stat-label { font-size: 12px; color: rgba(255,255,255,0.7); margin-bottom: 6px; }
 .appt-stat-value { font-size: 24px; font-weight: 800; }
+
+/* ===== MODAL ===== */
+.appt-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+}
+
+.appt-modal {
+  background: #fff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+  overflow: hidden;
+}
+
+.appt-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.appt-modal-title { margin: 0; font-size: 17px; font-weight: 800; color: #0f172a; }
+
+.appt-modal-body {
+  padding: 20px 24px;
+  display: grid;
+  gap: 16px;
+}
+
+.appt-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 24px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.appt-modal-fidel {
+  padding: 12px 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.appt-modal-fidel-name  { font-weight: 700; color: #0f172a; font-size: 15px; }
+.appt-modal-fidel-email { font-size: 13px; color: #64748b; margin-top: 2px; }
