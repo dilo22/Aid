@@ -7,7 +7,7 @@ const router = Router();
 
 router.use(requireAuth);
 
-router.get("/",      requireRole("admin", "organization", "fidel"), getSheepList);
+router.get("/",      requireRole("admin", "fidel"), getSheepList);
 router.post("/",     requireRole("admin"), createSheep);
 router.patch("/:id", requireRole("admin"), updateSheep); // ✅ PUT → PATCH
 router.delete("/:id", requireRole("admin"), deleteSheep);

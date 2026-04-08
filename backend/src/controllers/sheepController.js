@@ -125,10 +125,7 @@ export const getSheepList = async (req, res, next) => {
 
     if (req.user.role === "fidel") {
       query = query.eq("fidel_id", req.user.id);
-    } else if (req.user.role !== "admin" && req.user.organization_id) {
-      query = query.eq("organization_id", req.user.organization_id);
     }
-
     if (cleanSearch) query = query.ilike("number", `%${cleanSearch}%`);
     if (cleanStatus) query = query.eq("status", cleanStatus);
     if (cleanSize) query = query.eq("size", cleanSize);
