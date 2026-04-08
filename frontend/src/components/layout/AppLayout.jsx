@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth, useIdleTimeout } from "../../contexts/AuthContext";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import Loader from "../ui/Loader";
 import "../../styles/AppLayout.css";
+
 
 const ROLE_LABELS = {
   admin:        "Administrateur",
@@ -65,6 +66,15 @@ const AppLayout = () => {
       setLoggingOut(false);
     }
   };
+  useIdleTimeout(async () => {
+  try {
+    await signOut();
+  } catch (e) {
+    console.error("[IDLE_LOGOUT]", e);
+  } finally {
+    navigate("/login", { replace: true });
+  }
+});
 
   return (
     <div className="layout">

@@ -3,7 +3,26 @@ import { supabase } from "../lib/supabase";
 import { getMe } from "../api/authApi";
 
 const AuthContext = createContext(null);
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+const EVENTS = ["mousemove", "mousedown", "keydown", "touchstart", "scroll", "click"];
+export const useIdleTimeout = (onTimeout) => {
+  const timerRef = useRef(null);
 
+  const resetTimer = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(onTimeout, IDLE_TIMEOUT_MS);
+  }, [onTimeout]);
+
+  useEffect(() => {
+    resetTimer();
+    EVENTS.forEach((event) => window.addEventListener(event, resetTimer, { passive: true }));
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      EVENTS.forEach((event) => window.removeEventListener(event, resetTimer));
+    };
+  }, [resetTimer]);
+};
 const normalizeProfile = (profile) => {
   if (!profile) return null;
   const firstName = profile.first_name?.trim() || "";
