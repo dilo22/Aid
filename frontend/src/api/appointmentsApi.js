@@ -1,25 +1,15 @@
 import api from "./client";
 
-export const getAppointmentSettings = () =>
-  api.get("/appointments/settings").then((r) => r.data);
-
-export const updateAppointmentSettings = (data) =>
-  api.put("/appointments/settings", data).then((r) => r.data);
-
-export const generateAppointments = (type) =>
-  api.post(`/appointments/generate/${type}`).then((r) => r.data);
-
-export const getAppointments = (params = {}) =>
-  api.get("/appointments", { params }).then((r) => r.data);
-
-export const getMyAppointments = () =>
-  api.get("/appointments/me").then((r) => r.data);
-
-export const updateAppointment = (id, data) =>
-  api.patch(`/appointments/${id}`, data).then((r) => r.data);
-
-export const publishAppointments = (type) =>
-  api.post(`/appointments/publish/${type}`).then((r) => r.data);
+export const getAppointmentSettings     = ()       => api.get("/appointments/settings").then((r) => r.data);
+export const updateAppointmentSettings  = (data)   => api.put("/appointments/settings", data).then((r) => r.data);
+export const generateAppointments       = (type)   => api.post(`/appointments/generate/${type}`).then((r) => r.data);
+export const getAppointments            = (params) => api.get("/appointments", { params }).then((r) => r.data);
+export const getMyAppointments          = ()       => api.get("/appointments/me").then((r) => r.data);
+export const updateAppointment          = (id, d)  => api.patch(`/appointments/${id}`, d).then((r) => r.data);
+export const publishAppointments        = (type)   => api.post(`/appointments/publish/${type}`).then((r) => r.data);
+export const sendAppointmentEmails      = (type)   => api.post(`/appointments/send-emails/${type}`).then((r) => r.data);
+export const createSingleAppointment    = (data)   => api.post("/appointments/single", data).then((r) => r.data);
+export const getFidelesWithAppointments = ()       => api.get("/appointments/fideles").then((r) => r.data);
 
 export const exportFideles = () =>
   api.get("/appointments/export/fideles", { responseType: "blob" }).then((r) => {
