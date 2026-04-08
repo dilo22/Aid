@@ -1,12 +1,13 @@
 import express from "express";
 import cors from "cors";
-// import helmet from "helmet";  // ← commenter temporairement
+// import helmet from "helmet";
 import routes from "./routes/index.js";
 import { errorMiddleware } from "./middlewares/errorMiddleware.js";
 import { globalLimiter } from "./middlewares/rateLimitMiddleware.js";
 
 const app = express();
 app.set("trust proxy", 1);
+
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   "https://aid-adha.space",
@@ -28,7 +29,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 
-// app.use(helmet());  // ← commenter temporairement
+// app.use(helmet());
 app.use(express.json({ limit: "10kb" }));
 app.use(globalLimiter);
 

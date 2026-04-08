@@ -52,7 +52,125 @@ export const getPendingUsers = async (req, res, next) => {
     next(error);
   }
 };
+export const deleteFidelByAdmin = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
 
+    if (!isValidUUID(userId)) {
+      throw new ApiError(400, "ID invalide");
+    }
+
+    const { data: existingProfile, error: existingError } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .eq("role", "fidel")
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (existingError || !existingProfile) {
+      throw new ApiError(404, "Fidèle introuvable");
+    }
+
+    const payload = {
+      deleted_at: new Date().toISOString(),
+      deleted_by: req.user.id,
+      updated_at: new Date().toISOString(),
+      updated_by: req.user.id,
+      status: "rejected",
+    };
+
+    const { data: deletedProfile, error: deleteError } = await supabase
+      .from("profiles")
+      .update(payload)
+      .eq("id", userId)
+      .eq("role", "fidel")
+      .is("deleted_at", null)
+      .select()
+      .maybeSingle();
+
+    if (deleteError || !deletedProfile) {
+      console.error("[DELETE_FIDEL_BY_ADMIN]", deleteError);
+      throw new ApiError(500, "Impossible de supprimer le fidèle");
+    }
+
+    await insertAuditLog({
+      table_name: "profiles",
+      record_id: userId,
+      action: "delete",
+      organization_id: existingProfile.organization_id || null,
+      actor_user_id: req.user.id,
+      old_data: existingProfile,
+      new_data: deletedProfile,
+    });
+
+    res.json({
+      message: "Fidèle supprimé avec succès",
+      profile: deletedProfile,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+export const updateMe = async (req, res, next) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) throw new ApiError(401, "Non authentifié");
+
+    const first_name = String(req.body.first_name || "").trim();
+    const last_name = String(req.body.last_name || "").trim();
+    const phone = String(req.body.phone || "").trim() || null;
+
+    if (!first_name) throw new ApiError(400, "Le prénom est obligatoire");
+    if (!last_name) throw new ApiError(400, "Le nom est obligatoire");
+
+    const { data: existing, error: existingError } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (existingError || !existing) {
+      throw new ApiError(404, "Profil introuvable");
+    }
+
+    const updates = {
+      first_name,
+      last_name,
+      phone,
+      updated_at: new Date().toISOString(),
+      updated_by: userId,
+    };
+
+    const { data: updated, error: updateError } = await supabase
+      .from("profiles")
+      .update(updates)
+      .eq("id", userId)
+      .is("deleted_at", null)
+      .select(PROFILE_SELECT)
+      .maybeSingle();
+
+    if (updateError || !updated) {
+      console.error("[UPDATE_ME]", updateError);
+      throw new ApiError(500, "Impossible de mettre à jour le profil");
+    }
+
+    await insertAuditLog({
+      table_name: "profiles",
+      record_id: userId,
+      action: "update",
+      organization_id: existing.organization_id || null,
+      actor_user_id: userId,
+      old_data: existing,
+      new_data: updated,
+    });
+
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+};
 export const getApprovedUsers = async (req, res, next) => {
   try {
     const { data, error } = await supabase
