@@ -97,7 +97,10 @@ export const getSheepList = async (req, res, next) => {
     const safeSortBy    = ALLOWED_SORT_FIELDS.includes(sortBy)    ? sortBy    : "created_at";
     const safeSortOrder = ALLOWED_SORT_ORDERS.includes(sortOrder) ? sortOrder : "desc";
 
-    let query = supabase.from("sheep").select("*", { count: "exact" });
+    let query = supabase
+  .from("sheep")
+  .select("*", { count: "exact" })
+  .is("deleted_at", null);
 
     // ✅ Filtrage selon le rôle
     if (req.user.role === "fidel") {

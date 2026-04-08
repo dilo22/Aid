@@ -7,9 +7,21 @@ import {
 } from "../api/sheepApi";
 import { DEFAULT_SHEEP_FILTERS } from "../constants/sheep";
 
+const DEFAULT_META = {
+  total: 0,
+  page: 1,
+  limit: 20,
+  totalPages: 1,
+};
+
 export function useSheepManagement() {
   const [sheep, setSheep] = useState([]);
-  const [filters, setFiltersState] = useState(DEFAULT_SHEEP_FILTERS);
+  const [filters, setFiltersState] = useState({
+    ...DEFAULT_SHEEP_FILTERS,
+    page: 1,
+    limit: 20,
+  });
+  const [meta, setMeta] = useState(DEFAULT_META);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -31,11 +43,19 @@ export function useSheepManagement() {
         : [];
 
       setSheep(normalized);
+      setMeta({
+        total: data?.meta?.total ?? normalized.length,
+        page: data?.meta?.page ?? appliedFilters.page ?? 1,
+        limit: data?.meta?.limit ?? appliedFilters.limit ?? 20,
+        totalPages: data?.meta?.totalPages ?? 1,
+      });
+
       return normalized;
     } catch (err) {
       console.error("[useSheepManagement] fetchAll error:", err);
       setError(err.message || "Erreur lors du chargement des moutons");
       setSheep([]);
+      setMeta(DEFAULT_META);
       return [];
     } finally {
       setLoading(false);
@@ -49,15 +69,30 @@ export function useSheepManagement() {
   const refresh = useCallback(() => fetchAll(), [fetchAll]);
 
   const updateFilters = useCallback((nextFilters) => {
-    setFiltersState((prev) =>
-      typeof nextFilters === "function"
-        ? nextFilters(prev)
-        : { ...prev, ...nextFilters }
-    );
+    setFiltersState((prev) => {
+      const next =
+        typeof nextFilters === "function"
+          ? nextFilters(prev)
+          : { ...prev, ...nextFilters };
+
+      return next;
+    });
   }, []);
 
   const resetFilters = useCallback(() => {
-    setFiltersState(DEFAULT_SHEEP_FILTERS);
+    setFiltersState({
+      ...DEFAULT_SHEEP_FILTERS,
+      page: 1,
+      limit: 20,
+    });
+  }, []);
+
+  const goToPage = useCallback((page) => {
+    setFiltersState((prev) => ({ ...prev, page }));
+  }, []);
+
+  const setLimit = useCallback((limit) => {
+    setFiltersState((prev) => ({ ...prev, limit, page: 1 }));
   }, []);
 
   const createSheep = useCallback(async (payload) => {
@@ -96,8 +131,11 @@ export function useSheepManagement() {
   return {
     sheep,
     filters,
+    meta,
     setFilters: updateFilters,
     resetFilters,
+    goToPage,
+    setLimit,
     loading,
     error,
     refresh,
