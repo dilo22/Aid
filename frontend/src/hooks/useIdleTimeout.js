@@ -1,20 +1,27 @@
 import { useEffect, useRef, useCallback } from "react";
 
-const IDLE_TIMEOUT_MS  = 30 * 60 * 1000; // 30 minutes
-const WARNING_BEFORE_MS = 2 * 60 * 1000;  // avertissement 2 min avant
+const IDLE_TIMEOUT_MS   = 30 * 60 * 1000; // 30 minutes
+const WARNING_BEFORE_MS =  2 * 60 * 1000; // avertissement 2 min avant
 const EVENTS = ["mousemove", "mousedown", "keydown", "touchstart", "scroll", "click"];
 
 export const useIdleTimeout = (onTimeout) => {
   const timerRef   = useRef(null);
   const warningRef = useRef(null);
   const toastRef   = useRef(null);
+  const onTimeoutRef = useRef(onTimeout);
 
-  const removeToast = () => {
+  // ✅ Toujours à jour sans recréer les callbacks
+  useEffect(() => { onTimeoutRef.current = onTimeout; }, [onTimeout]);
+
+  const removeToast = useCallback(() => {
     if (toastRef.current) {
       toastRef.current.remove();
       toastRef.current = null;
     }
-  };
+  }, []);
+
+  // ✅ resetTimer via ref pour éviter la circularité
+  const resetTimerRef = useRef(null);
 
   const showWarning = useCallback(() => {
     removeToast();
@@ -44,7 +51,9 @@ export const useIdleTimeout = (onTimeout) => {
         <span style="font-size:18px">⚠️</span>
         <div>
           <div style="font-weight:700;margin-bottom:4px">Session inactive</div>
-          <div style="color:#94a3b8;font-size:13px">Vous serez déconnecté dans 2 minutes.</div>
+          <div style="color:#94a3b8;font-size:13px">
+            Vous serez déconnecté dans 2 minutes.
+          </div>
         </div>
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end">
@@ -59,23 +68,27 @@ export const useIdleTimeout = (onTimeout) => {
     document.body.appendChild(toast);
     toastRef.current = toast;
 
+    // ✅ Utilise la ref pour éviter la dépendance circulaire
     document.getElementById("idle-stay")?.addEventListener("click", () => {
       removeToast();
-      resetTimer();
+      resetTimerRef.current?.();
     });
-  }, []);
+  }, [removeToast]);
 
   const resetTimer = useCallback(() => {
     removeToast();
     if (timerRef.current)   clearTimeout(timerRef.current);
     if (warningRef.current) clearTimeout(warningRef.current);
 
-    warningRef.current = setTimeout(showWarning,  IDLE_TIMEOUT_MS - WARNING_BEFORE_MS);
+    warningRef.current = setTimeout(showWarning, IDLE_TIMEOUT_MS - WARNING_BEFORE_MS);
     timerRef.current   = setTimeout(() => {
       removeToast();
-      onTimeout();
+      onTimeoutRef.current();
     }, IDLE_TIMEOUT_MS);
-  }, [onTimeout, showWarning]);
+  }, [removeToast, showWarning]);
+
+  // ✅ Synchronise la ref
+  useEffect(() => { resetTimerRef.current = resetTimer; }, [resetTimer]);
 
   useEffect(() => {
     resetTimer();
@@ -86,5 +99,5 @@ export const useIdleTimeout = (onTimeout) => {
       if (warningRef.current) clearTimeout(warningRef.current);
       EVENTS.forEach((e) => window.removeEventListener(e, resetTimer));
     };
-  }, [resetTimer]);
+  }, [resetTimer, removeToast]);
 };
