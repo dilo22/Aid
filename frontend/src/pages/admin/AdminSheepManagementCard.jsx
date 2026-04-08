@@ -42,85 +42,44 @@ export default function AdminSheepManagementCard({
   formatDate,
 }) {
   const isLoading = loading || profilesLoading;
-
-  const currentPage = meta?.page ?? 1;
-  const totalPages = meta?.totalPages ?? 1;
-  const totalItems = meta?.total ?? 0;
-  const currentLimit = meta?.limit ?? 20;
+  const currentPage  = meta?.page       ?? 1;
+  const totalPages   = meta?.totalPages ?? 1;
+  const totalItems   = meta?.total      ?? 0;
+  const currentLimit = meta?.limit      ?? 20;
 
   return (
     <div className="sheep-card">
+
+      {/* HEADER */}
       <div className="sheep-header">
         <div>
           <h1 className="sheep-title">Gestion des moutons</h1>
-          <p className="sheep-subtitle">
-            Suivi, attribution, prix, réduction et paiement.
-          </p>
+          <p className="sheep-subtitle">Suivi, attribution, prix, réduction et paiement.</p>
         </div>
         <div className="sheep-header-actions">
-          <button onClick={onRefresh} className="btn-secondary" type="button">
-            Actualiser
-          </button>
-          <button onClick={onOpenCreate} className="btn-primary" type="button">
-            + Nouveau mouton
-          </button>
+          <button onClick={onRefresh}     className="btn-secondary" type="button">Actualiser</button>
+          <button onClick={onOpenCreate}  className="btn-primary"   type="button">+ Nouveau mouton</button>
         </div>
       </div>
 
+      {/* TOOLBAR */}
       <div className="sheep-toolbar">
-        <input
-          type="text"
-          placeholder="Rechercher par numéro, couleur, fidèle..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="sheep-input"
-          style={{ flex: 2, minWidth: 200 }}
-        />
-
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="sheep-input"
-        >
+        <input type="text" placeholder="Rechercher par numéro, couleur, fidèle..."
+          value={search} onChange={(e) => setSearch(e.target.value)}
+          className="sheep-input" style={{ flex: 2, minWidth: 200 }} />
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="sheep-input">
           <option value="all">Tous les statuts</option>
-          {SHEEP_STATUSES.map(({ value, label }) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
+          {SHEEP_STATUSES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
         </select>
-
-        <select
-          value={sizeFilter}
-          onChange={(e) => setSizeFilter(e.target.value)}
-          className="sheep-input"
-        >
+        <select value={sizeFilter} onChange={(e) => setSizeFilter(e.target.value)} className="sheep-input">
           <option value="all">Toutes les tailles</option>
-          {sizeOptions.map(({ value, label }) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
+          {sizeOptions.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
         </select>
-
-        <select
-          value={colorFilter}
-          onChange={(e) => setColorFilter(e.target.value)}
-          className="sheep-input"
-        >
+        <select value={colorFilter} onChange={(e) => setColorFilter(e.target.value)} className="sheep-input">
           <option value="all">Toutes les couleurs</option>
-          {colorOptions.map((color) => (
-            <option key={color} value={color}>
-              {color}
-            </option>
-          ))}
+          {colorOptions.map((color) => <option key={color} value={color}>{color}</option>)}
         </select>
-
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
-          className="sheep-input"
-        >
+        <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="sheep-input">
           <option value="recent">Plus récents</option>
           <option value="number_asc">Numéro A → Z</option>
           <option value="number_desc">Numéro Z → A</option>
@@ -129,183 +88,84 @@ export default function AdminSheepManagementCard({
         </select>
       </div>
 
+      {/* FORMULAIRE */}
       {showForm && (
         <form onSubmit={onSubmit} className="sheep-form">
           <div className="sheep-form-grid">
             <label className="sheep-label">
               Numéro *
-              <input
-                name="number"
-                value={form.number}
-                onChange={onChange}
-                placeholder="Numéro du mouton"
-                required
-                className="sheep-input"
-              />
+              <input name="number" value={form.number} onChange={onChange}
+                placeholder="Numéro du mouton" required className="sheep-input" />
             </label>
-
             <label className="sheep-label">
               URL photo
-              <input
-                name="photo_url"
-                value={form.photo_url}
-                onChange={onChange}
-                placeholder="https://..."
-                className="sheep-input"
-              />
+              <input name="photo_url" value={form.photo_url} onChange={onChange}
+                placeholder="https://..." className="sheep-input" />
             </label>
-
             <label className="sheep-label">
               Poids (kg)
-              <input
-                name="weight"
-                type="number"
-                value={form.weight}
-                onChange={onChange}
-                placeholder="Poids"
-                className="sheep-input"
-              />
+              <input name="weight" type="number" value={form.weight} onChange={onChange}
+                placeholder="Poids" className="sheep-input" />
             </label>
-
             <label className="sheep-label">
               Prix initial (€)
-              <input
-                name="price"
-                type="number"
-                value={form.price}
-                onChange={onChange}
-                placeholder="Prix"
-                min="0"
-                step="0.01"
-                className="sheep-input"
-              />
+              <input name="price" type="number" value={form.price} onChange={onChange}
+                placeholder="Prix" min="0" step="0.01" className="sheep-input" />
             </label>
-
             <label className="sheep-label">
               Réduction (€)
-              <input
-                name="discount_amount"
-                type="number"
-                value={form.discount_amount}
-                onChange={onChange}
-                placeholder="Réduction"
-                min="0"
-                step="0.01"
-                className="sheep-input"
-              />
+              <input name="discount_amount" type="number" value={form.discount_amount} onChange={onChange}
+                placeholder="Réduction" min="0" step="0.01" className="sheep-input" />
             </label>
-
             <label className="sheep-label">
               Prix final (€)
-              <input
-                name="final_price"
-                type="number"
-                value={form.final_price}
-                onChange={onChange}
-                placeholder="Prix final"
-                min="0"
-                step="0.01"
-                className="sheep-input"
-              />
+              <input name="final_price" type="number" value={form.final_price} onChange={onChange}
+                placeholder="Prix final" min="0" step="0.01" className="sheep-input" />
             </label>
-
             <label className="sheep-label">
               Taille
-              <select
-                name="size"
-                value={form.size}
-                onChange={onChange}
-                className="sheep-input"
-              >
+              <select name="size" value={form.size} onChange={onChange} className="sheep-input">
                 <option value="">Sélectionner</option>
-                {SHEEP_SIZES.map(({ value, label }) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
+                {SHEEP_SIZES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
               </select>
             </label>
-
             <label className="sheep-label">
               Couleur
-              <input
-                name="color"
-                value={form.color}
-                onChange={onChange}
-                placeholder="Couleur"
-                className="sheep-input"
-              />
+              <input name="color" value={form.color} onChange={onChange}
+                placeholder="Couleur" className="sheep-input" />
             </label>
-
             <label className="sheep-label">
               Statut
-              <select
-                name="status"
-                value={form.status}
-                onChange={onChange}
-                className="sheep-input"
-              >
-                {SHEEP_STATUSES.map(({ value, label }) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
+              <select name="status" value={form.status} onChange={onChange} className="sheep-input">
+                {SHEEP_STATUSES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
               </select>
             </label>
-
             <label className="sheep-label">
               Échéance paiement
-              <input
-                name="payment_due_date"
-                type="datetime-local"
-                value={form.payment_due_date}
-                onChange={onChange}
-                className="sheep-input"
-              />
+              <input name="payment_due_date" type="datetime-local" value={form.payment_due_date}
+                onChange={onChange} className="sheep-input" />
             </label>
-
             <label className="sheep-label">
               Notes paiement
-              <textarea
-                name="payment_notes"
-                value={form.payment_notes}
-                onChange={onChange}
-                placeholder="Notes paiement"
-                className="sheep-textarea"
-              />
+              <textarea name="payment_notes" value={form.payment_notes} onChange={onChange}
+                placeholder="Notes paiement" className="sheep-textarea" />
             </label>
-
             <label className="sheep-label sheep-form-full">
               Notes mouton
-              <textarea
-                name="notes"
-                value={form.notes}
-                onChange={onChange}
-                placeholder="Notes"
-                className="sheep-textarea"
-              />
+              <textarea name="notes" value={form.notes} onChange={onChange}
+                placeholder="Notes" className="sheep-textarea" />
             </label>
           </div>
-
           <div className="sheep-form-actions">
             <button type="submit" className="btn-primary" disabled={saving}>
-              {saving
-                ? "Enregistrement..."
-                : editingId
-                ? "Enregistrer les modifications"
-                : "Créer le mouton"}
+              {saving ? "Enregistrement..." : editingId ? "Enregistrer les modifications" : "Créer le mouton"}
             </button>
-            <button
-              type="button"
-              onClick={onCancel}
-              className="btn-secondary"
-            >
-              Annuler
-            </button>
+            <button type="button" onClick={onCancel} className="btn-secondary">Annuler</button>
           </div>
         </form>
       )}
 
+      {/* ===== TABLEAU — desktop ===== */}
       <div className="sheep-table-wrap">
         <table className="sheep-table">
           <thead>
@@ -325,78 +185,45 @@ export default function AdminSheepManagementCard({
             {isLoading ? (
               <tr>
                 <td colSpan={9} className="sheep-loading-cell">
-                  <Loader small />
-                  <div>Chargement des données...</div>
+                  <Loader small /><div>Chargement...</div>
                 </td>
               </tr>
             ) : filteredSheep.length === 0 ? (
               <tr>
-                <td colSpan={9} className="sheep-empty">
-                  Aucun mouton trouvé.
-                </td>
+                <td colSpan={9} className="sheep-empty">Aucun mouton trouvé.</td>
               </tr>
             ) : (
               filteredSheep.map((item) => {
-                const realStatus = getRealSheepStatus(item);
+                const realStatus   = getRealSheepStatus(item);
                 const assignedName = getAssignedProfileName(item);
-
                 return (
-                  <tr
-                    key={item.id}
-                    className="sheep-row"
-                    onClick={() => onRowClick(item)}
-                  >
+                  <tr key={item.id} className="sheep-row" onClick={() => onRowClick(item)}>
                     <td className="sheep-td">
                       <div className="sheep-cell">
                         <div className="sheep-avatar">🐏</div>
                         <div>
-                          <div className="sheep-number">
-                            #{item.number || "-"}
-                          </div>
-                          <div className="sheep-meta">
-                            {item.id.slice(0, 8)}...
-                          </div>
+                          <div className="sheep-number">#{item.number || "-"}</div>
+                          <div className="sheep-meta">{item.id.slice(0, 8)}...</div>
                         </div>
                       </div>
                     </td>
                     <td className="sheep-td">{formatWeight(item.weight)}</td>
                     <td className="sheep-td">{formatPrice(item.price)}</td>
                     <td className="sheep-td">
-                      {SHEEP_SIZES.find((s) => s.value === item.size)?.label ||
-                        item.size ||
-                        "-"}
+                      {SHEEP_SIZES.find((s) => s.value === item.size)?.label || item.size || "-"}
                     </td>
                     <td className="sheep-td">{item.color || "-"}</td>
-                    <td className="sheep-td">
-                      <StatusBadge status={realStatus} />
-                    </td>
+                    <td className="sheep-td"><StatusBadge status={realStatus} /></td>
                     <td className="sheep-td">{assignedName}</td>
                     <td className="sheep-td">{formatDate(item.created_at)}</td>
                     <td className="sheep-td">
                       <div className="sheep-actions">
-                        <button
-                          type="button"
-                          className="sheep-btn-icon sheep-btn-icon--edit"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onEdit(item);
-                          }}
-                          title="Modifier"
-                          aria-label="Modifier"
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          type="button"
-                          className="sheep-btn-icon sheep-btn-icon--delete"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDelete(item.id, item.number);
-                          }}
-                          disabled={deletingId === item.id}
-                          title="Supprimer"
-                          aria-label="Supprimer"
-                        >
+                        <button type="button" className="sheep-btn-icon sheep-btn-icon--edit"
+                          onClick={(e) => { e.stopPropagation(); onEdit(item); }}
+                          title="Modifier">✏️</button>
+                        <button type="button" className="sheep-btn-icon sheep-btn-icon--delete"
+                          onClick={(e) => { e.stopPropagation(); onDelete(item.id, item.number); }}
+                          disabled={deletingId === item.id} title="Supprimer">
                           {deletingId === item.id ? "…" : "🗑️"}
                         </button>
                       </div>
@@ -409,50 +236,91 @@ export default function AdminSheepManagementCard({
         </table>
       </div>
 
+      {/* ===== CARTES — mobile ===== */}
+      <div className="sheep-mobile-list">
+        {isLoading ? (
+          <div className="sheep-mobile-loading"><Loader small /></div>
+        ) : filteredSheep.length === 0 ? (
+          <div className="sheep-mobile-empty">Aucun mouton trouvé.</div>
+        ) : (
+          filteredSheep.map((item) => {
+            const realStatus   = getRealSheepStatus(item);
+            const assignedName = getAssignedProfileName(item);
+            return (
+              <div key={item.id} className="sheep-mobile-card" onClick={() => onRowClick(item)}>
+                <div className="sheep-mobile-card-header">
+                  <div className="sheep-mobile-card-title">
+                    <span className="sheep-mobile-avatar">🐏</span>
+                    <span className="sheep-mobile-card-name">#{item.number || "-"}</span>
+                  </div>
+                  <StatusBadge status={realStatus} />
+                </div>
+                <div className="sheep-mobile-card-row">
+                  <span>Poids</span>
+                  <span className="sheep-mobile-card-value">{formatWeight(item.weight)}</span>
+                </div>
+                <div className="sheep-mobile-card-row">
+                  <span>Prix</span>
+                  <span className="sheep-mobile-card-value">{formatPrice(item.price)}</span>
+                </div>
+                <div className="sheep-mobile-card-row">
+                  <span>Taille</span>
+                  <span className="sheep-mobile-card-value">
+                    {SHEEP_SIZES.find((s) => s.value === item.size)?.label || item.size || "-"}
+                  </span>
+                </div>
+                <div className="sheep-mobile-card-row">
+                  <span>Couleur</span>
+                  <span className="sheep-mobile-card-value">{item.color || "-"}</span>
+                </div>
+                <div className="sheep-mobile-card-row">
+                  <span>Fidèle</span>
+                  <span className="sheep-mobile-card-value">{assignedName}</span>
+                </div>
+                <div className="sheep-mobile-card-row">
+                  <span>Ajouté le</span>
+                  <span className="sheep-mobile-card-value">{formatDate(item.created_at)}</span>
+                </div>
+                <div className="sheep-mobile-card-actions">
+                  <button type="button" className="sheep-btn-icon sheep-btn-icon--edit"
+                    onClick={(e) => { e.stopPropagation(); onEdit(item); }}
+                    title="Modifier">✏️</button>
+                  <button type="button" className="sheep-btn-icon sheep-btn-icon--delete"
+                    onClick={(e) => { e.stopPropagation(); onDelete(item.id, item.number); }}
+                    disabled={deletingId === item.id} title="Supprimer">
+                    {deletingId === item.id ? "…" : "🗑️"}
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* PAGINATION */}
       <div className="sheep-pagination">
         <div className="sheep-pagination-info">
-          {totalItems > 0 ? (
-            <>
-              Affichage page {currentPage} sur {totalPages} — {totalItems} moutons
-            </>
-          ) : (
-            <>Aucun mouton</>
-          )}
+          {totalItems > 0
+            ? <>Page {currentPage} sur {totalPages} — {totalItems} moutons</>
+            : <>Aucun mouton</>}
         </div>
-
         <div className="sheep-pagination-actions">
-          <select
-            value={currentLimit}
-            onChange={(e) => onLimitChange(Number(e.target.value))}
-            className="sheep-input"
-            style={{ width: 110 }}
-            disabled={isLoading}
-          >
+          <select value={currentLimit} onChange={(e) => onLimitChange(Number(e.target.value))}
+            className="sheep-input" style={{ width: 110 }} disabled={isLoading}>
             <option value={10}>10 / page</option>
             <option value={20}>20 / page</option>
             <option value={50}>50 / page</option>
             <option value={100}>100 / page</option>
           </select>
-
-          <button
-            type="button"
-            className="btn-secondary"
+          <button type="button" className="btn-secondary"
             onClick={() => onPageChange(currentPage - 1)}
-            disabled={isLoading || currentPage <= 1}
-          >
-            Précédent
-          </button>
-
-          <button
-            type="button"
-            className="btn-secondary"
+            disabled={isLoading || currentPage <= 1}>Précédent</button>
+          <button type="button" className="btn-secondary"
             onClick={() => onPageChange(currentPage + 1)}
-            disabled={isLoading || currentPage >= totalPages}
-          >
-            Suivant
-          </button>
+            disabled={isLoading || currentPage >= totalPages}>Suivant</button>
         </div>
       </div>
+
     </div>
   );
 }
