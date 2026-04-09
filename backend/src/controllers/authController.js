@@ -126,58 +126,41 @@ export const register = async (req, res, next) => {
 
 export const changePassword = async (req, res, next) => {
   try {
-    if (!req.user || !req.profile) {
-      throw new ApiError(401, "Utilisateur non authentifié");
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user.id;
+
+    if (!newPassword || newPassword.length < 8) {
+      throw new ApiError(400, "Nouveau mot de passe invalide");
     }
 
-    const { password, current_password } = req.body;
+    // ✅ Si must_change_password, pas besoin de vérifier l'ancien mdp
+    if (!req.user.must_change_password) {
+      if (!currentPassword) {
+        throw new ApiError(400, "Le mot de passe actuel est requis");
+      }
 
-    // ✅ Vérification de l'ancien mot de passe
-    if (!current_password) {
-      throw new ApiError(400, "Le mot de passe actuel est requis");
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: req.user.email,
+        password: currentPassword,
+      });
+
+      if (signInError) {
+        throw new ApiError(400, "Mot de passe actuel incorrect");
+      }
     }
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: req.user.email,
-      password: current_password,
+    const { error } = await supabase.auth.admin.updateUserById(userId, {
+      password: newPassword,
     });
 
-    if (signInError) {
-      throw new ApiError(403, "Mot de passe actuel incorrect");
-    }
+    if (error) throw new ApiError(500, "Impossible de changer le mot de passe");
 
-    // ✅ Validation du nouveau mot de passe
-    validatePassword(password);
+    // ✅ Remet must_change_password à false
+    await supabase.from("profiles")
+      .update({ must_change_password: false, updated_at: new Date().toISOString() })
+      .eq("id", userId);
 
-    if (password === current_password) {
-      throw new ApiError(400, "Le nouveau mot de passe doit être différent de l'ancien");
-    }
-
-    const { error: passwordError } = await supabase.auth.admin.updateUserById(
-      req.user.id,
-      { password }
-    );
-
-    if (passwordError) {
-      console.error("[CHANGE_PASSWORD] updateUserById error:", passwordError);
-      throw new ApiError(500, "Erreur lors de la mise à jour du mot de passe");
-    }
-
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .update({
-        must_change_password: false,
-        updated_at: new Date().toISOString(),
-        updated_by: req.user.id,
-      })
-      .eq("id", req.user.id);
-
-    if (profileError) {
-      console.error("[CHANGE_PASSWORD] profile update error:", profileError);
-      throw new ApiError(500, "Erreur lors de la mise à jour du profil");
-    }
-
-    res.json({ message: "Mot de passe mis à jour avec succès" });
+    res.json({ message: "Mot de passe changé avec succès" });
   } catch (error) {
     next(error);
   }

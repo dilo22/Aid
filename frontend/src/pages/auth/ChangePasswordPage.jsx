@@ -30,9 +30,9 @@ export default function ChangePasswordPage() {
     setLoading(true);
     try {
       await api.post("/auth/change-password", {
-        currentPassword,
-        newPassword,
-      });
+  currentPassword: profile?.must_change_password ? null : currentPassword,
+  newPassword,
+});
 
       setSuccess("Mot de passe changé avec succès.");
       await refreshProfile();
@@ -70,20 +70,22 @@ export default function ChangePasswordPage() {
           {success && <div className="auth-success">{success}</div>}
 
           <form onSubmit={handleSubmit} className="auth-form">
-            <div className="auth-field">
-              <label className="auth-label">Mot de passe actuel</label>
-              <div className="auth-password-wrap">
-                <input type={showCurrent ? "text" : "password"}
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Mot de passe actuel"
-                  className="auth-input" disabled={loading} required />
-                <button type="button" className="auth-toggle-btn"
-                  onClick={() => setShowCurrent((p) => !p)}>
-                  {showCurrent ? "Masquer" : "Afficher"}
-                </button>
-              </div>
-            </div>
+            {!profile?.must_change_password && (
+  <div className="auth-field">
+    <label className="auth-label">Mot de passe actuel</label>
+    <div className="auth-password-wrap">
+      <input type={showCurrent ? "text" : "password"}
+        value={currentPassword}
+        onChange={(e) => setCurrentPassword(e.target.value)}
+        placeholder="Mot de passe actuel"
+        className="auth-input" disabled={loading} />
+      <button type="button" className="auth-toggle-btn"
+        onClick={() => setShowCurrent((p) => !p)}>
+        {showCurrent ? "Masquer" : "Afficher"}
+      </button>
+    </div>
+  </div>
+)}
 
             <div className="auth-field">
               <label className="auth-label">Nouveau mot de passe</label>
