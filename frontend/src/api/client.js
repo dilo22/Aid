@@ -29,11 +29,13 @@ api.interceptors.response.use(
     }
 
     // ✅ Redirige vers change-password si must_change_password = true
-    if (status === 403 && message.includes("changer votre mot de passe")) {
-      window.location.href = "/change-password";
-      return Promise.reject(error);
-    }
-
+   if (status === 403 && message.includes("changer votre mot de passe")) {
+  // ✅ Évite la boucle infinie
+  if (!window.location.pathname.includes("/change-password")) {
+    window.location.href = "/change-password";
+  }
+  return Promise.reject(error);
+}
     if (status === 429) {
       error.message = "Trop de requêtes. Veuillez patienter.";
       return Promise.reject(error);
