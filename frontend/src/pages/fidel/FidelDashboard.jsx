@@ -54,6 +54,31 @@ const AppointmentCard = ({ appt }) => {
   );
 };
 
+// ✅ Bandeau d'attente pour les fidèles pending
+const PendingBanner = () => (
+  <div style={{
+    background: "#fff7ed",
+    border: "1px solid #fdba74",
+    borderRadius: 14,
+    padding: "16px 20px",
+    display: "flex",
+    gap: 12,
+    alignItems: "flex-start",
+    color: "#c2410c",
+    fontSize: 14,
+    fontWeight: 600,
+  }}>
+    <span style={{ fontSize: 20, flexShrink: 0 }}>⏳</span>
+    <div>
+      <div>Votre compte est en attente de validation.</div>
+      <div style={{ fontWeight: 400, marginTop: 4, color: "#9a3412", lineHeight: 1.6 }}>
+        Un administrateur examinera votre dossier prochainement.
+        Vous recevrez un accès complet dès l'approbation de votre compte.
+      </div>
+    </div>
+  </div>
+);
+
 export default function FidelDashboard() {
   const { profile } = useAuth();
 
@@ -63,10 +88,19 @@ export default function FidelDashboard() {
   const [loading,       setLoading]       = useState(true);
   const [selectedSheep, setSelectedSheep] = useState(null);
 
+  const isPending = profile?.status === "pending";
+
   const loadData = useCallback(async () => {
     if (!profile?.id) return;
     try {
       setLoading(true);
+
+      // ✅ Si pending — pas besoin de charger les données
+      if (isPending) {
+        setLoading(false);
+        return;
+      }
+
       const [sheepData, paymentsData, apptData] = await Promise.all([
         getSheepList({ page: 1, limit: 100 }),
         getPaymentsByProfileId(profile.id),
@@ -77,13 +111,10 @@ export default function FidelDashboard() {
       setAppointments(Array.isArray(apptData?.items) ? apptData.items : []);
     } catch (error) {
       console.error("[FidelDashboard]", error);
-      setSheep([]);
-      setPayments([]);
-      setAppointments([]);
     } finally {
       setLoading(false);
     }
-  }, [profile?.id]);
+  }, [profile?.id, isPending]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -143,115 +174,121 @@ export default function FidelDashboard() {
             <div style={{ display: "grid", gap: 10 }}>
               <h1 className="fidel-hero-title">Bonjour {getDisplayName(profile)}</h1>
               <p className="fidel-hero-subtitle">
-                Retrouvez ici vos moutons attribués et le suivi de votre dossier.
+                {isPending
+                  ? "Bienvenue sur AID Platform. Votre espace sera disponible après validation."
+                  : "Retrouvez ici vos moutons attribués et le suivi de votre dossier."}
               </p>
               <StatusBadge status={profile?.status} />
             </div>
-            <button
-              onClick={loadData}
-              disabled={loading}
-              className="btn-secondary"
-              style={{ flexShrink: 0, marginTop: 4 }}
-            >
-              {loading ? "..." : "↻ Actualiser"}
-            </button>
+            {!isPending && (
+              <button onClick={loadData} disabled={loading}
+                className="btn-secondary" style={{ flexShrink: 0, marginTop: 4 }}>
+                {loading ? "..." : "↻ Actualiser"}
+              </button>
+            )}
           </div>
         </div>
 
-        {/* GRILLE */}
-        <div className="fidel-grid">
+        {/* ✅ Bandeau pending */}
+        {isPending && <PendingBanner />}
 
-          {/* RENDEZ-VOUS */}
-          <div className="fidel-card fidel-col-6">
-            <div className="fidel-card-header">
-              <h2 className="fidel-card-title">Rendez-vous à venir</h2>
-              <p className="fidel-card-subtitle">Vos créneaux attribués par l'administration.</p>
-            </div>
-            <div className="fidel-card-body">
-              {loading ? <Loader small /> : upcomingAppointments.length === 0 ? (
-                <div className="fidel-empty">
-                  Aucun rendez-vous planifié pour le moment.
-                  L'administration vous attribuera un créneau prochainement.
-                </div>
-              ) : (
-                <div style={{ display: "grid", gap: 12 }}>
-                  {upcomingAppointments.map((appt) => (
-                    <AppointmentCard key={appt.id} appt={appt} />
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+        {/* GRILLE — masquée si pending */}
+        {!isPending && (
+          <div className="fidel-grid">
 
-          {/* MOUTONS */}
-          <div className="fidel-card fidel-col-6">
-            <div className="fidel-card-header">
-              <h2 className="fidel-card-title">Mes moutons</h2>
-              <p className="fidel-card-subtitle">Cliquez sur un mouton pour voir ses détails.</p>
-            </div>
-            <div className="fidel-card-body">
-              {loading ? <Loader small /> : sheepWithSummary.length === 0 ? (
-                <div className="fidel-empty">
-                  Aucun mouton attribué pour le moment. Dès qu'un admin vous en affecte un, il apparaîtra ici.
-                </div>
-              ) : (
-                <div className="fidel-sheep-list">
-                  {sheepWithSummary.map((item) => (
-                    <div key={item.id} className="fidel-sheep-row" onClick={() => setSelectedSheep(item)}>
-                      <div className="fidel-sheep-row-top">
-                        <div className="fidel-sheep-row-left">
-                          {item.photo_url
-                            ? <img src={item.photo_url} alt={`Mouton ${item.number}`} className="fidel-sheep-photo" />
-                            : <div className="fidel-sheep-fallback">🐏</div>
-                          }
-                          <div>
-                            <h3 className="fidel-sheep-name">Mouton #{item.number || "-"}</h3>
-                            <p className="fidel-sheep-sub">{item.size || "-"} • {item.color || "-"}</p>
-                            <p className="fidel-sheep-sub">{item.weight ? `${item.weight} kg` : "-"}</p>
-                          </div>
-                        </div>
-                        <div className="fidel-sheep-badges">
-                          <StatusBadge status={item.status} />
-                          <StatusBadge status={item.payment_status || "unpaid"} />
-                        </div>
-                      </div>
-
-                      <div className="fidel-summary-grid">
-                        {[
-                          ["Prix final",    formatMoney(item.expectedAmount)],
-                          ["Déjà payé",     formatMoney(item.paidAmount)],
-                          ["Reste à payer", formatMoney(item.remainingAmount)],
-                          ["Nb paiements",  item.sheepPayments.length],
-                        ].map(([label, value]) => (
-                          <div key={label} className="fidel-summary-box">
-                            <div className="fidel-summary-label">{label}</div>
-                            <div className="fidel-summary-value">{value}</div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="fidel-bar-track">
-                        <div className="fidel-bar-fill" style={{ width: `${item.paymentProgress}%` }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* INFO */}
-          <div className="fidel-card fidel-col-12">
-            <div className="fidel-card-header">
-              <h2 className="fidel-card-title">Informations importantes</h2>
-            </div>
-            <div className="fidel-card-body">
-              <div className="fidel-empty">
-                Votre profil, vos moutons et vos paiements sont mis à jour par l'administration.
+            {/* RENDEZ-VOUS */}
+            <div className="fidel-card fidel-col-6">
+              <div className="fidel-card-header">
+                <h2 className="fidel-card-title">Rendez-vous à venir</h2>
+                <p className="fidel-card-subtitle">Vos créneaux attribués par l'administration.</p>
+              </div>
+              <div className="fidel-card-body">
+                {loading ? <Loader small /> : upcomingAppointments.length === 0 ? (
+                  <div className="fidel-empty">
+                    Aucun rendez-vous planifié pour le moment.
+                    L'administration vous attribuera un créneau prochainement.
+                  </div>
+                ) : (
+                  <div style={{ display: "grid", gap: 12 }}>
+                    {upcomingAppointments.map((appt) => (
+                      <AppointmentCard key={appt.id} appt={appt} />
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
+
+            {/* MOUTONS */}
+            <div className="fidel-card fidel-col-6">
+              <div className="fidel-card-header">
+                <h2 className="fidel-card-title">Mes moutons</h2>
+                <p className="fidel-card-subtitle">Cliquez sur un mouton pour voir ses détails.</p>
+              </div>
+              <div className="fidel-card-body">
+                {loading ? <Loader small /> : sheepWithSummary.length === 0 ? (
+                  <div className="fidel-empty">
+                    Aucun mouton attribué pour le moment.
+                  </div>
+                ) : (
+                  <div className="fidel-sheep-list">
+                    {sheepWithSummary.map((item) => (
+                      <div key={item.id} className="fidel-sheep-row" onClick={() => setSelectedSheep(item)}>
+                        <div className="fidel-sheep-row-top">
+                          <div className="fidel-sheep-row-left">
+                            {item.photo_url
+                              ? <img src={item.photo_url} alt={`Mouton ${item.number}`} className="fidel-sheep-photo" />
+                              : <div className="fidel-sheep-fallback">🐏</div>
+                            }
+                            <div>
+                              <h3 className="fidel-sheep-name">Mouton #{item.number || "-"}</h3>
+                              <p className="fidel-sheep-sub">{item.size || "-"} • {item.color || "-"}</p>
+                              <p className="fidel-sheep-sub">{item.weight ? `${item.weight} kg` : "-"}</p>
+                            </div>
+                          </div>
+                          <div className="fidel-sheep-badges">
+                            <StatusBadge status={item.status} />
+                            <StatusBadge status={item.payment_status || "unpaid"} />
+                          </div>
+                        </div>
+
+                        <div className="fidel-summary-grid">
+                          {[
+                            ["Prix final",    formatMoney(item.expectedAmount)],
+                            ["Déjà payé",     formatMoney(item.paidAmount)],
+                            ["Reste à payer", formatMoney(item.remainingAmount)],
+                            ["Nb paiements",  item.sheepPayments.length],
+                          ].map(([label, value]) => (
+                            <div key={label} className="fidel-summary-box">
+                              <div className="fidel-summary-label">{label}</div>
+                              <div className="fidel-summary-value">{value}</div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="fidel-bar-track">
+                          <div className="fidel-bar-fill" style={{ width: `${item.paymentProgress}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* INFO */}
+            <div className="fidel-card fidel-col-12">
+              <div className="fidel-card-header">
+                <h2 className="fidel-card-title">Informations importantes</h2>
+              </div>
+              <div className="fidel-card-body">
+                <div className="fidel-empty">
+                  Votre profil, vos moutons et vos paiements sont mis à jour par l'administration.
+                </div>
+              </div>
+            </div>
+
           </div>
-        </div>
+        )}
       </div>
 
       {/* MODAL */}

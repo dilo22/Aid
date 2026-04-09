@@ -25,9 +25,14 @@ const ProtectedRoute = ({ children, roles = [] }) => {
     return <Navigate to="/change-password" replace />;
   }
 
-  if (profile.status === "pending" && location.pathname !== "/pending-approval") {
-    return <Navigate to="/pending-approval" replace />;
+  if (profile.status === "pending" && profile.role === "fidel") {
+  // ✅ Autorise uniquement les routes fidèle
+  const fidelRoutes = ["/fidel", "/fidel/profile", "/fidel/contact"];
+  const isOnFidelRoute = fidelRoutes.some(r => location.pathname.startsWith(r));
+  if (!isOnFidelRoute) {
+    return <Navigate to="/fidel" replace />;
   }
+}
 
   if (profile.status === "rejected") {
     return <Navigate to="/login" replace />;
