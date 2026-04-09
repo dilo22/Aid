@@ -54,12 +54,9 @@ export const updateAppointmentSettings = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-// ===== GÉNÉRATION =====
-console.log("[GENERATE] Premier appointment:", JSON.stringify(appointments[0]));
-console.log("[GENERATE] Total:", appointments.length);
 
-const { error: insertError } = await supabase
-  .from("appointments").insert(appointments);
+// ===== GÉNÉRATION =====
+
 export const generateAppointments = async (req, res, next) => {
   try {
     const { type } = req.params;
@@ -79,13 +76,12 @@ export const generateAppointments = async (req, res, next) => {
     if (fidelError) throw new ApiError(500, "Erreur récupération fidèles");
     if (!fideles?.length) throw new ApiError(400, "Aucun fidèle approuvé");
 
-    // ✅ Supprime les RDV scheduled existants du même type
     await supabase.from("appointments")
       .delete()
       .eq("status", "scheduled")
       .eq("type", type);
 
-    const startDate    = new Date(
+    const startDate     = new Date(
       type === "selection" ? settings.selection_start_date : settings.sacrifice_date
     );
     const sacrificeDate = new Date(settings.sacrifice_date);
@@ -99,7 +95,6 @@ export const generateAppointments = async (req, res, next) => {
       const slots   = generateSlots(dateStr);
 
       for (const slot of slots) {
-        // ✅ slotCapacity fidèles par créneau
         for (let i = 0; i < slotCapacity; i++) {
           if (fidelIndex >= fideles.length) break;
           appointments.push({
@@ -115,15 +110,20 @@ export const generateAppointments = async (req, res, next) => {
       }
 
       currentDate.setDate(currentDate.getDate() + 1);
-
       if (type === "selection" && currentDate >= sacrificeDate) break;
     }
+
+    // ✅ Logs de debug au bon endroit — dans la fonction
+    console.log("[GENERATE] Premier appointment:", JSON.stringify(appointments[0]));
+    console.log("[GENERATE] Total:", appointments.length);
 
     const { error: insertError } = await supabase
       .from("appointments").insert(appointments);
 
     if (insertError) {
       console.error("[GENERATE_APPOINTMENTS]", insertError);
+      console.error("[GENERATE_APPOINTMENTS] First item:", JSON.stringify(appointments[0]));
+      console.error("[GENERATE_APPOINTMENTS] Total items:", appointments.length);
       throw new ApiError(500, "Erreur création RDV");
     }
 
