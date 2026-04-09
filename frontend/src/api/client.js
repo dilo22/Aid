@@ -19,7 +19,7 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const status  = error.response?.status;
+    const status = error.response?.status;
     const message = error.response?.data?.message || error.message || "Erreur réseau";
 
     if (status === 401) {
@@ -28,8 +28,6 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // ✅ Ne jamais rediriger depuis l'intercepteur sur 403
-    // Le ProtectedRoute et AuthContext gèrent les redirections
     if (status === 429) {
       error.message = "Trop de requêtes. Veuillez patienter.";
       return Promise.reject(error);
