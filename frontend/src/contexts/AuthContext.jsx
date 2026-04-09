@@ -39,31 +39,44 @@ export const AuthProvider = ({ children }) => {
     let mounted = true;
 
     const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!mounted) return;
-      setSession(session ?? null);
-      if (session) await fetchProfile();
-      if (mounted) setLoading(false);
-    };
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!mounted) return;
+
+  // ✅ Si on arrive avec un token recovery dans le hash
+  if (window.location.hash.includes("type=recovery")) {
+    window.location.href = "/reset-password" + window.location.hash;
+    return;
+  }
+
+  setSession(session ?? null);
+  if (session) await fetchProfile();
+  if (mounted) setLoading(false);
+};
 
     init();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!mounted) return;
-      if (event === "INITIAL_SESSION") return;
+  if (!mounted) return;
+  if (event === "INITIAL_SESSION") return;
 
-      setSession(session ?? null);
+  // ✅ Redirection automatique vers reset-password
+  if (event === "PASSWORD_RECOVERY") {
+    window.location.href = "/reset-password";
+    return;
+  }
 
-      if (event === "SIGNED_OUT") {
-        setProfile(null);
-        setLoading(false);
-        return;
-      }
+  setSession(session ?? null);
 
-      if (event === "SIGNED_IN" && session) {
-        Promise.resolve().then(() => { if (mounted) fetchProfile(); });
-      }
-    });
+  if (event === "SIGNED_OUT") {
+    setProfile(null);
+    setLoading(false);
+    return;
+  }
+
+  if (event === "SIGNED_IN" && session) {
+    Promise.resolve().then(() => { if (mounted) fetchProfile(); });
+  }
+});
 
     return () => {
       mounted = false;
