@@ -36,14 +36,12 @@ export const requireAuth = async (req, res, next) => {
       throw new ApiError(404, "Profil introuvable");
     }
 
+    // ✅ Seul le rejet bloque complètement
     if (profile.status === "rejected") {
       throw new ApiError(403, "Compte rejete");
     }
 
-    // ✅ Les fideles pending peuvent acceder a leur espace
-    if (profile.status === "pending" && profile.role !== "fidel") {
-      throw new ApiError(403, "Compte en attente de validation");
-    }
+    // ✅ Supprimé — le frontend gère les pending via ProtectedRoute
 
     const isAllowedRoute =
       req.originalUrl.includes("/auth/change-password") ||
