@@ -17,7 +17,7 @@ export const requireAuth = async (req, res, next) => {
     } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
-      throw new ApiError(401, "Token invalide ou expiré");
+      throw new ApiError(401, "Token invalide ou expire");
     }
 
     const { data: profile, error: profileError } = await supabase
@@ -37,15 +37,14 @@ export const requireAuth = async (req, res, next) => {
     }
 
     if (profile.status === "rejected") {
-      throw new ApiError(403, "Compte rejeté");
+      throw new ApiError(403, "Compte rejete");
     }
 
-    // ✅ Les fidèles pending peuvent accéder à leur espace (avec contenu limité)
+    // ✅ Les fideles pending peuvent acceder a leur espace
     if (profile.status === "pending" && profile.role !== "fidel") {
       throw new ApiError(403, "Compte en attente de validation");
     }
 
-    // ✅ Routes autorisées même si must_change_password = true
     const isAllowedRoute =
       req.originalUrl.includes("/auth/change-password") ||
       req.originalUrl.includes("/auth/me");
@@ -58,9 +57,8 @@ export const requireAuth = async (req, res, next) => {
       if (!profile.organization) {
         throw new ApiError(403, "Organisation introuvable");
       }
-
       if (!profile.organization.is_active || profile.organization.deleted_at) {
-        throw new ApiError(403, "Organisation désactivée");
+        throw new ApiError(403, "Organisation desactivee");
       }
     }
 
