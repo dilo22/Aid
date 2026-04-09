@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { supabase } from "../config/supabase.js";
 import { ApiError } from "../utils/apiError.js";
+import { sendWelcomeEmail } from "../services/emailService.js";
 
 const isValidUUID = (id) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
@@ -546,9 +547,11 @@ export const createFidelByAdmin = async (req, res, next) => {
       new_data: createdProfile,
     });
 
-    console.info(
-      `[CREATE_FIDEL] temp password for ${cleanEmail}: ${temporaryPassword}`
-    );
+    await sendWelcomeEmail({
+      email:             cleanEmail,
+      firstName:         cleanFirstName,
+      temporaryPassword,
+    });
 
     res.status(201).json({
       message:

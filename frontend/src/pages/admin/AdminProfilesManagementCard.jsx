@@ -33,6 +33,7 @@ export default function AdminProfilesManagementCard({
   search,
   roleFilter,
   statusFilter,
+  meta,
   setSearch,
   setRoleFilter,
   setStatusFilter,
@@ -45,6 +46,7 @@ export default function AdminProfilesManagementCard({
   onApprove,
   onDelete,
   onOpenAssignModal,
+  onPageChange,
   getOrganizationLabel,
   getAssignedSheepCountForProfile,
 }) {
@@ -190,15 +192,13 @@ export default function AdminProfilesManagementCard({
                       {item.status === "pending" && (
                         <button type="button" className="profiles-btn-icon profiles-btn-icon--approve"
                           onClick={(e) => { e.stopPropagation(); onApprove(item.id); }}
-                          disabled={approvingId === item.id}
-                          title="Valider">
+                          disabled={approvingId === item.id} title="Valider">
                           {approvingId === item.id ? "…" : "✓"}
                         </button>
                       )}
                       <button type="button" className="profiles-btn-icon profiles-btn-icon--delete"
                         onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
-                        disabled={deletingId === item.id}
-                        title="Supprimer">
+                        disabled={deletingId === item.id} title="Supprimer">
                         {deletingId === item.id ? "…" : "🗑️"}
                       </button>
                     </div>
@@ -257,15 +257,13 @@ export default function AdminProfilesManagementCard({
                 {item.status === "pending" && (
                   <button type="button" className="profiles-btn-icon profiles-btn-icon--approve"
                     onClick={(e) => { e.stopPropagation(); onApprove(item.id); }}
-                    disabled={approvingId === item.id}
-                    title="Valider">
+                    disabled={approvingId === item.id} title="Valider">
                     {approvingId === item.id ? "…" : "✓"}
                   </button>
                 )}
                 <button type="button" className="profiles-btn-icon profiles-btn-icon--delete"
                   onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
-                  disabled={deletingId === item.id}
-                  title="Supprimer">
+                  disabled={deletingId === item.id} title="Supprimer">
                   {deletingId === item.id ? "…" : "🗑️"}
                 </button>
               </div>
@@ -273,6 +271,25 @@ export default function AdminProfilesManagementCard({
           ))
         )}
       </div>
+
+      {/* ===== PAGINATION ===== */}
+      {meta && (
+        <div className="profiles-pagination">
+          <div className="profiles-pagination-info">
+            {meta.total > 0
+              ? <>Page {meta.page} sur {meta.totalPages} — {meta.total} profils</>
+              : <>Aucun profil</>}
+          </div>
+          <div className="profiles-pagination-actions">
+            <button type="button" className="btn-secondary"
+              onClick={() => onPageChange(meta.page - 1)}
+              disabled={loading || meta.page <= 1}>Précédent</button>
+            <button type="button" className="btn-secondary"
+              onClick={() => onPageChange(meta.page + 1)}
+              disabled={loading || meta.page >= meta.totalPages}>Suivant</button>
+          </div>
+        </div>
+      )}
 
     </div>
   );

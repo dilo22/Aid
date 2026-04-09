@@ -1,23 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import {
   getOrganizations,
   createOrganization,
   updateOrganization,
   deleteOrganization,
 } from "../../api/organizationsApi";
-import { getApprovedProfiles } from "../../api/profilesApi"; // ✅ plus getProfiles
+import { getApprovedProfiles } from "../../api/profilesApi";
 import AdminOrganizationsManagementCard from "./AdminOrganizationsManagementCard";
 import AdminOrganizationsModal from "./AdminOrganizationsModal";
 import "../../styles/AdminOrganizations.css";
 
 const EMPTY_FORM = {
-  name:      "",
-  type:      "",
-  address:   "",
-  city:      "",
-  phone:     "",
-  email:     "",
-  is_active: true,
+  name: "", type: "", address: "", city: "", phone: "", email: "", is_active: true,
 };
 
 const getStatusTheme = (isActive) =>
@@ -30,66 +24,81 @@ const getProfileDisplayName = (profile) => {
   return name || profile?.email || "-";
 };
 
+const PAGE_LIMIT = 20;
+
 export default function AdminOrganizationsPage() {
   const [organizations, setOrganizations] = useState([]);
+  const [orgMeta,       setOrgMeta]       = useState({ total: 0, page: 1, totalPages: 1 });
   const [profiles,      setProfiles]      = useState([]);
   const [form,          setForm]          = useState(EMPTY_FORM);
   const [editingId,     setEditingId]     = useState(null);
   const [selectedOrg,   setSelectedOrg]   = useState(null);
 
-  const [loading,        setLoading]        = useState(false);
-  const [profilesLoading,setProfilesLoading]= useState(false);
-  const [saving,         setSaving]         = useState(false);
-  const [deletingId,     setDeletingId]     = useState(null);
-  const [showForm,       setShowForm]       = useState(false);
+  const [loading,         setLoading]         = useState(false);
+  const [profilesLoading, setProfilesLoading] = useState(false);
+  const [saving,          setSaving]          = useState(false);
+  const [deletingId,      setDeletingId]      = useState(null);
+  const [showForm,        setShowForm]        = useState(false);
 
   const [search,       setSearch]       = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter,   setTypeFilter]   = useState("all");
   const [cityFilter,   setCityFilter]   = useState("all");
+  const [currentPage,  setCurrentPage]  = useState(1);
 
   // ===== CHARGEMENT =====
 
-  const loadOrganizations = async () => {
+  const loadOrganizations = useCallback(async (page = 1) => {
     try {
       setLoading(true);
-      const data = await getOrganizations();
+      const data = await getOrganizations({
+        page,
+        limit:  PAGE_LIMIT,
+        search: search.trim() || undefined,
+        status: statusFilter !== "all" ? statusFilter : undefined,
+        type:   typeFilter   !== "all" ? typeFilter   : undefined,
+        city:   cityFilter   !== "all" ? cityFilter   : undefined,
+      });
       setOrganizations(Array.isArray(data) ? data : data?.items ?? []);
+      setOrgMeta(data?.meta ?? { total: 0, page: 1, totalPages: 1 });
     } catch (error) {
-      console.error("[AdminOrganizationsPage] loadOrganizations:", error);
+      console.error("[AdminOrganizationsPage] load:", error);
       setOrganizations([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [search, statusFilter, typeFilter, cityFilter]);
 
   const loadProfiles = async () => {
     try {
       setProfilesLoading(true);
-      // ✅ getApprovedProfiles — un seul appel, profils actifs uniquement
       const data = await getApprovedProfiles();
       setProfiles(Array.isArray(data) ? data : data?.items ?? []);
     } catch (error) {
       console.error("[AdminOrganizationsPage] loadProfiles:", error);
-      setProfiles([]);
     } finally {
       setProfilesLoading(false);
     }
   };
 
   useEffect(() => {
-    loadOrganizations();
     loadProfiles();
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+    loadOrganizations(1);
+  }, [search, statusFilter, typeFilter, cityFilter]);
+
+  useEffect(() => {
+    loadOrganizations(currentPage);
+  }, [currentPage]);
 
   // ===== FORM =====
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setForm((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
+    setForm((prev) => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
   };
 
   const handleOpenCreate = () => {
@@ -129,11 +138,9 @@ export default function AdminOrganizationsPage() {
         await updateOrganization(editingId, form);
       } else {
         await createOrganization(form);
-        // ✅ temporaryPassword supprimé du backend — on informe simplement
-        alert("Organisation créée. Le mot de passe provisoire a été envoyé par email à l'organisation.");
       }
       handleCancel();
-      await Promise.all([loadOrganizations(), loadProfiles()]);
+      await loadOrganizations(currentPage);
     } catch (error) {
       console.error("[AdminOrganizationsPage] handleSubmit:", error);
       alert(error?.message || "Impossible d'enregistrer l'organisation.");
@@ -143,18 +150,16 @@ export default function AdminOrganizationsPage() {
   };
 
   const handleDelete = async (id, name) => {
-    if (!window.confirm(`Voulez-vous vraiment supprimer "${name}" ?`)) return;
-
+    if (!window.confirm(`Supprimer "${name}" ?`)) return;
     setDeletingId(id);
     try {
       await deleteOrganization(id);
-      await loadOrganizations();
-      if (editingId === id)       handleCancel();
+      await loadOrganizations(currentPage);
+      if (editingId       === id) handleCancel();
       if (selectedOrg?.id === id) setSelectedOrg(null);
     } catch (error) {
       console.error("[AdminOrganizationsPage] handleDelete:", error);
-      // ✅ Feedback utilisateur sur l'erreur
-      alert(error?.message || "Impossible de supprimer l'organisation.");
+      alert(error?.message || "Impossible de supprimer.");
     } finally {
       setDeletingId(null);
     }
@@ -162,7 +167,6 @@ export default function AdminOrganizationsPage() {
 
   // ===== MEMO =====
 
-  // ✅ Map des profils par organisation — O(n) au lieu de O(n×m)
   const profilesByOrg = useMemo(() => {
     const map = new Map();
     for (const profile of profiles) {
@@ -177,32 +181,19 @@ export default function AdminOrganizationsPage() {
   const getProfilesForOrg      = (orgId) => profilesByOrg.get(orgId) ?? [];
   const getProfilesCountForOrg = (orgId) => getProfilesForOrg(orgId).length;
 
-  const cityOptions = useMemo(() => {
-    const cities = [...new Set(organizations.map((o) => o.city).filter(Boolean))];
-    return cities;
-  }, [organizations]);
-
-  const filteredOrganizations = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    return organizations.filter((org) => {
-      const matchSearch = !term || [org.name, org.type, org.address, org.city, org.phone, org.email]
-        .filter(Boolean).some((v) => v.toLowerCase().includes(term));
-      const matchStatus =
-        statusFilter === "all" ||
-        (statusFilter === "active"   &&  org.is_active) ||
-        (statusFilter === "inactive" && !org.is_active);
-      const matchType = typeFilter === "all" || org.type === typeFilter;
-      const matchCity = cityFilter === "all" || org.city === cityFilter;
-      return matchSearch && matchStatus && matchType && matchCity;
-    });
-  }, [organizations, search, statusFilter, typeFilter, cityFilter]);
-
-  const selectedOrgProfiles = useMemo(
-    () => (selectedOrg ? getProfilesForOrg(selectedOrg.id) : []),
-    [selectedOrg, profilesByOrg]
+  // ✅ Options de villes depuis toutes les orgs (pas juste la page courante)
+  const cityOptions = useMemo(() =>
+    [...new Set(organizations.map((o) => o.city).filter(Boolean))],
+    [organizations]
   );
 
-  // ===== RENDER =====
+  // ✅ Filtrage local supprimé — géré côté backend
+  const filteredOrganizations = organizations;
+
+  const selectedOrgProfiles = useMemo(
+    () => selectedOrg ? getProfilesForOrg(selectedOrg.id) : [],
+    [selectedOrg, profilesByOrg]
+  );
 
   return (
     <div className="org-page">
@@ -234,6 +225,9 @@ export default function AdminOrganizationsPage() {
           setCityFilter={setCityFilter}
           getStatusTheme={getStatusTheme}
           getProfilesCountForOrganization={getProfilesCountForOrg}
+          // ✅ Pagination
+          meta={orgMeta}
+          onPageChange={setCurrentPage}
         />
       </div>
 

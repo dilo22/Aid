@@ -23,6 +23,7 @@ export default function AdminOrganizationsManagementCard({
   cityFilter,
   cityOptions,
   filteredOrganizations,
+  meta,
   onChange,
   onOpenCreate,
   onSubmit,
@@ -30,6 +31,7 @@ export default function AdminOrganizationsManagementCard({
   onEdit,
   onDelete,
   onRowClick,
+  onPageChange,
   setSearch,
   setStatusFilter,
   setTypeFilter,
@@ -46,24 +48,15 @@ export default function AdminOrganizationsManagementCard({
       <div className="org-header">
         <div>
           <h1 className="org-title">Gestion des organisations</h1>
-          <p className="org-subtitle">
-            Recherche, filtres, actions rapides et consultation détaillée.
-          </p>
+          <p className="org-subtitle">Recherche, filtres, actions rapides et consultation détaillée.</p>
         </div>
-        <button onClick={onOpenCreate} className="btn-primary">
-          + Nouvelle organisation
-        </button>
+        <button onClick={onOpenCreate} className="btn-primary">+ Nouvelle organisation</button>
       </div>
 
       {/* TOOLBAR */}
       <div className="org-toolbar">
-        <input
-          type="text"
-          placeholder="Rechercher par nom, email, téléphone, ville..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="org-input"
-        />
+        <input type="text" placeholder="Rechercher par nom, email, téléphone, ville..."
+          value={search} onChange={(e) => setSearch(e.target.value)} className="org-input" />
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="org-input">
           <option value="all">Tous les statuts</option>
           <option value="active">Actives</option>
@@ -71,9 +64,7 @@ export default function AdminOrganizationsManagementCard({
         </select>
         <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="org-input">
           <option value="all">Tous les types</option>
-          {ORGANIZATION_TYPES.map(({ value, label }) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
+          {ORGANIZATION_TYPES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
         </select>
         <select value={cityFilter} onChange={(e) => setCityFilter(e.target.value)} className="org-input">
           <option value="all">Toutes les villes</option>
@@ -96,9 +87,7 @@ export default function AdminOrganizationsManagementCard({
               Type *
               <select name="type" value={form.type} onChange={onChange} required className="org-input">
                 <option value="">Sélectionner un type</option>
-                {ORGANIZATION_TYPES.map(({ value, label }) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
+                {ORGANIZATION_TYPES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
               </select>
             </label>
             <label className="org-label">
@@ -122,12 +111,10 @@ export default function AdminOrganizationsManagementCard({
                 placeholder="Email" required className="org-input" />
             </label>
           </div>
-
           <label className="org-checkbox-label">
             <input type="checkbox" name="is_active" checked={form.is_active} onChange={onChange} />
             Organisation active
           </label>
-
           <div className="org-form-actions">
             <button type="submit" className="btn-primary" disabled={saving}>
               {saving ? "Enregistrement..." : editingId ? "Enregistrer les modifications" : "Créer l'organisation"}
@@ -137,7 +124,7 @@ export default function AdminOrganizationsManagementCard({
         </form>
       )}
 
-      {/* ===== TABLEAU — desktop uniquement ===== */}
+      {/* ===== TABLEAU — desktop ===== */}
       <div className="org-table-wrap">
         <table className="org-table">
           <thead>
@@ -155,8 +142,7 @@ export default function AdminOrganizationsManagementCard({
             {isLoading ? (
               <tr>
                 <td colSpan={7} className="org-loading-cell">
-                  <Loader small />
-                  <div>Chargement...</div>
+                  <Loader small /><div>Chargement...</div>
                 </td>
               </tr>
             ) : filteredOrganizations.length === 0 ? (
@@ -184,8 +170,7 @@ export default function AdminOrganizationsManagementCard({
                           title="Modifier">✏️</button>
                         <button type="button" className="org-btn-icon org-btn-icon--delete"
                           onClick={(e) => { e.stopPropagation(); onDelete(org.id, org.name); }}
-                          disabled={deletingId === org.id}
-                          title="Supprimer">
+                          disabled={deletingId === org.id} title="Supprimer">
                           {deletingId === org.id ? "…" : "🗑️"}
                         </button>
                       </div>
@@ -198,7 +183,7 @@ export default function AdminOrganizationsManagementCard({
         </table>
       </div>
 
-      {/* ===== CARTES — mobile uniquement ===== */}
+      {/* ===== CARTES — mobile ===== */}
       <div className="org-mobile-list">
         {isLoading ? (
           <div className="org-mobile-loading"><Loader small /></div>
@@ -237,8 +222,7 @@ export default function AdminOrganizationsManagementCard({
                   title="Modifier">✏️</button>
                 <button type="button" className="org-btn-icon org-btn-icon--delete"
                   onClick={(e) => { e.stopPropagation(); onDelete(org.id, org.name); }}
-                  disabled={deletingId === org.id}
-                  title="Supprimer">
+                  disabled={deletingId === org.id} title="Supprimer">
                   {deletingId === org.id ? "…" : "🗑️"}
                 </button>
               </div>
@@ -246,6 +230,25 @@ export default function AdminOrganizationsManagementCard({
           ))
         )}
       </div>
+
+      {/* ===== PAGINATION ===== */}
+      {meta && (
+        <div className="org-pagination">
+          <div className="org-pagination-info">
+            {meta.total > 0
+              ? <>Page {meta.page} sur {meta.totalPages} — {meta.total} organisations</>
+              : <>Aucune organisation</>}
+          </div>
+          <div className="org-pagination-actions">
+            <button type="button" className="btn-secondary"
+              onClick={() => onPageChange(meta.page - 1)}
+              disabled={isLoading || meta.page <= 1}>Précédent</button>
+            <button type="button" className="btn-secondary"
+              onClick={() => onPageChange(meta.page + 1)}
+              disabled={isLoading || meta.page >= meta.totalPages}>Suivant</button>
+          </div>
+        </div>
+      )}
 
     </div>
   );

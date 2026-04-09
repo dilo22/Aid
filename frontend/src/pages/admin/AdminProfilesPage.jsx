@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import {
   getProfiles,
   registerFidel,
@@ -14,8 +14,6 @@ import AdminProfilesManagementCard from "./AdminProfilesManagementCard";
 import AdminProfilesModals from "./AdminProfilesModals";
 import { SHEEP_SIZES } from "../../constants/sheep";
 import "../../styles/AdminProfiles.css";
-
-// ===== HELPERS =====
 
 const EMPTY_FORM = () => ({
   first_name:           "",
@@ -40,14 +38,11 @@ const getOrganizationLabel = (item) => {
   return name || type || "-";
 };
 
-const getStatusTheme = (status) => {
-  const themes = {
-    pending:  { background: "#fff7ed", color: "#c2410c", border: "1px solid #fdba74", label: "En attente" },
-    approved: { background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe", label: "Approuvé" },
-    rejected: { background: "#fff1f2", color: "#be123c", border: "1px solid #fecdd3", label: "Rejeté" },
-  };
-  return themes[status] ?? { background: "#f8fafc", color: "#475569", border: "1px solid #e2e8f0", label: status || "-" };
-};
+const getStatusTheme = (status) => ({
+  pending:  { background: "#fff7ed", color: "#c2410c", border: "1px solid #fdba74", label: "En attente" },
+  approved: { background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe", label: "Approuvé" },
+  rejected: { background: "#fff1f2", color: "#be123c", border: "1px solid #fecdd3", label: "Rejeté" },
+}[status] ?? { background: "#f8fafc", color: "#475569", border: "1px solid #e2e8f0", label: status || "-" });
 
 const getSheepStatusLabel = (status) => ({
   available:  "Disponible",
@@ -59,22 +54,21 @@ const getSheepStatusLabel = (status) => ({
 const formatDateTime = (value) =>
   value ? new Date(value).toLocaleString("fr-FR") : "-";
 
-const cleanPayload = (payload) => {
-  const cleaned = { ...payload };
-  return {
-    ...cleaned,
-    first_name:      (cleaned.first_name || "").trim()  || null,
-    last_name:       (cleaned.last_name  || "").trim()  || null,
-    email:           cleaned.email ? cleaned.email.trim().toLowerCase() : null,
-    phone:           cleaned.phone ? cleaned.phone.trim() : null,
-    organization_id: cleaned.organization_id || null,
-  };
-};
+const cleanPayload = (payload) => ({
+  ...payload,
+  first_name:      (payload.first_name || "").trim()  || null,
+  last_name:       (payload.last_name  || "").trim()  || null,
+  email:           payload.email ? payload.email.trim().toLowerCase() : null,
+  phone:           payload.phone ? payload.phone.trim() : null,
+  organization_id: payload.organization_id || null,
+});
 
-// ===== PAGE =====
+// ===== PAGINATION =====
+const PAGE_LIMIT = 20;
 
 export default function AdminProfilesPage() {
   const [profiles,      setProfiles]      = useState([]);
+  const [profilesMeta,  setProfilesMeta]  = useState({ total: 0, page: 1, totalPages: 1 });
   const [organizations, setOrganizations] = useState([]);
   const [sheep,         setSheep]         = useState([]);
 
@@ -84,10 +78,10 @@ export default function AdminProfilesPage() {
   const [approvingId,      setApprovingId]      = useState(null);
   const [assigningSheepId, setAssigningSheepId] = useState(null);
 
-  const [showForm,         setShowForm]         = useState(false);
-  const [editingId,        setEditingId]        = useState(null);
-  const [selectedProfile,  setSelectedProfile]  = useState(null);
-  const [assignProfile,    setAssignProfile]    = useState(null);
+  const [showForm,        setShowForm]        = useState(false);
+  const [editingId,       setEditingId]       = useState(null);
+  const [selectedProfile, setSelectedProfile] = useState(null);
+  const [assignProfile,   setAssignProfile]   = useState(null);
 
   const [form,         setForm]         = useState(EMPTY_FORM());
   const [errorMessage, setErrorMessage] = useState("");
@@ -95,6 +89,7 @@ export default function AdminProfilesPage() {
   const [search,       setSearch]       = useState("");
   const [roleFilter,   setRoleFilter]   = useState("fidel");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [currentPage,  setCurrentPage]  = useState(1);
 
   const [sheepSearch,       setSheepSearch]       = useState("");
   const [sheepStatusFilter, setSheepStatusFilter] = useState("available");
@@ -103,55 +98,65 @@ export default function AdminProfilesPage() {
 
   // ===== CHARGEMENT =====
 
-  const loadPageData = async () => {
+  const loadProfiles = useCallback(async (page = 1) => {
     try {
       setLoading(true);
       setErrorMessage("");
 
-      const [profilesData, orgsData, sheepData] = await Promise.all([
-        getProfiles(),           // ✅ pas de token manuel — intercepteur axios s'en charge
-        getOrganizations(),
-        getSheepList({ page: 1, limit: 100 }), // ✅ aligné avec le plafond backend
-      ]);
+      // ✅ Pagination côté backend
+      const data = await getProfiles({
+        page,
+        limit:  PAGE_LIMIT,
+        role:   roleFilter   !== "all" ? roleFilter   : undefined,
+        status: statusFilter !== "all" ? statusFilter : undefined,
+        search: search.trim() || undefined,
+      });
 
-      setProfiles(Array.isArray(profilesData) ? profilesData : profilesData?.items ?? []);
-      setOrganizations(Array.isArray(orgsData) ? orgsData : orgsData?.items ?? []);
-      setSheep(Array.isArray(sheepData?.items) ? sheepData.items : Array.isArray(sheepData) ? sheepData : []);
+      setProfiles(Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : []);
+      setProfilesMeta(data?.meta ?? { total: 0, page: 1, totalPages: 1 });
     } catch (error) {
-      console.error("[AdminProfilesPage] loadPageData:", error);
-      setErrorMessage(error?.message || "Impossible de charger les données.");
+      console.error("[AdminProfilesPage] loadProfiles:", error);
+      setErrorMessage(error?.message || "Impossible de charger les profils.");
     } finally {
       setLoading(false);
     }
+  }, [roleFilter, statusFilter, search]);
+
+  const loadStaticData = async () => {
+    try {
+      const [orgsData, sheepData] = await Promise.all([
+        getOrganizations(),
+        getSheepList({ page: 1, limit: 100 }),
+      ]);
+      setOrganizations(Array.isArray(orgsData) ? orgsData : orgsData?.items ?? []);
+      setSheep(Array.isArray(sheepData?.items) ? sheepData.items : []);
+    } catch (error) {
+      console.error("[AdminProfilesPage] loadStaticData:", error);
+    }
   };
 
-  // ✅ Pas de dépendance sur session?.access_token — évite rechargement à chaque refresh token
-  useEffect(() => { loadPageData(); }, []);
+  useEffect(() => {
+    loadStaticData();
+  }, []);
 
-  // ===== FILTRES =====
+  // ✅ Recharge quand les filtres ou la page changent
+  useEffect(() => {
+    setCurrentPage(1);
+    loadProfiles(1);
+  }, [roleFilter, statusFilter, search]);
 
-  const filteredProfiles = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    return profiles.filter((item) => {
-      const matchSearch = !term || [
-        item.first_name, item.last_name, item.email,
-        item.phone, item.role, item.status,
-        item.organization?.name, item.organization?.type,
-      ].filter(Boolean).some((v) => String(v).toLowerCase().includes(term));
+  useEffect(() => {
+    loadProfiles(currentPage);
+  }, [currentPage]);
 
-      const matchRole   = roleFilter   === "all" || item.role   === roleFilter;
-      const matchStatus = statusFilter === "all" || item.status === statusFilter;
-      return matchSearch && matchRole && matchStatus;
-    });
-  }, [profiles, search, roleFilter, statusFilter]);
+  // ===== FILTRES LOCAUX (sur la page courante seulement) =====
+  // Les filtres principaux sont gérés côté backend
+  // filteredProfiles = profiles déjà filtrés par le backend
+  const filteredProfiles = profiles;
 
-  // ✅ Couleurs des moutons depuis les données (dynamique)
   const sheepColorOptions = useMemo(() =>
-    [...new Set(sheep.map((s) => s.color).filter(Boolean))],
-    [sheep]
-  );
+    [...new Set(sheep.map((s) => s.color).filter(Boolean))], [sheep]);
 
-  // ===== MAP MOUTONS PAR PROFIL — O(n) =====
   const sheepByProfile = useMemo(() => {
     const map = new Map();
     for (const s of sheep) {
@@ -162,10 +167,9 @@ export default function AdminProfilesPage() {
     return map;
   }, [sheep]);
 
-  const getAssignedSheepForProfile  = (id) => sheepByProfile.get(id) ?? [];
+  const getAssignedSheepForProfile      = (id) => sheepByProfile.get(id) ?? [];
   const getAssignedSheepCountForProfile = (id) => getAssignedSheepForProfile(id).length;
 
-  // ===== FILTRES MOUTONS ATTRIBUTION =====
   const filteredSheepForAssign = useMemo(() => {
     const term = sheepSearch.trim().toLowerCase();
     const numTerm = term.replace(/^mouton\s*#?\s*/i, "").trim();
@@ -173,22 +177,18 @@ export default function AdminProfilesPage() {
 
     return sheep.filter((item) => {
       const hasFidel = !!item.fidel_id;
-
       const matchStatus =
-        sheepStatusFilter === "all" ? true
+        sheepStatusFilter === "all"       ? true
         : sheepStatusFilter === "available" ? !hasFidel && item.status === "available"
         : item.status === sheepStatusFilter;
-
-      const matchColor = sheepColorFilter === "all" || item.color === sheepColorFilter;
-      const matchSize  = sheepSizeFilter  === "all" || item.size  === sheepSizeFilter;
-
+      const matchColor  = sheepColorFilter === "all" || item.color === sheepColorFilter;
+      const matchSize   = sheepSizeFilter  === "all" || item.size  === sheepSizeFilter;
       const matchSearch = !term || (
         isNumSearch
           ? String(item.number || "").includes(numTerm)
           : [item.number, item.status, item.size, item.color, item.notes, item.id]
               .filter(Boolean).some((v) => String(v).toLowerCase().includes(term))
       );
-
       return matchStatus && matchColor && matchSize && matchSearch;
     });
   }, [sheep, sheepSearch, sheepStatusFilter, sheepColorFilter, sheepSizeFilter]);
@@ -205,13 +205,13 @@ export default function AdminProfilesPage() {
   const handleEdit = (item) => {
     setEditingId(item.id);
     setForm({
-      first_name:           item.first_name      || "",
-      last_name:            item.last_name        || "",
-      email:                item.email            || "",
-      phone:                item.phone            || "",
-      role:                 item.role             || "fidel",
-      status:               item.status           || "pending",
-      organization_id:      item.organization_id  || "",
+      first_name:           item.first_name     || "",
+      last_name:            item.last_name      || "",
+      email:                item.email          || "",
+      phone:                item.phone          || "",
+      role:                 item.role           || "fidel",
+      status:               item.status         || "pending",
+      organization_id:      item.organization_id || "",
       must_change_password: Boolean(item.must_change_password),
     });
     setShowForm(true);
@@ -231,89 +231,56 @@ export default function AdminProfilesPage() {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setErrorMessage("");
+    e.preventDefault();
+    setErrorMessage("");
 
-  const payload = cleanPayload(form);
+    const payload = cleanPayload(form);
+    if (!payload.first_name)      return setErrorMessage("Le prénom est obligatoire.");
+    if (!payload.last_name)       return setErrorMessage("Le nom est obligatoire.");
+    if (!payload.email)           return setErrorMessage("L'email est obligatoire.");
+    if (!payload.organization_id) return setErrorMessage("L'organisation est obligatoire.");
 
-  if (!payload.first_name) {
-    return setErrorMessage("Le prénom est obligatoire.");
-  }
-
-  if (!payload.last_name) {
-    return setErrorMessage("Le nom est obligatoire.");
-  }
-
-  if (!payload.email) {
-    return setErrorMessage("L'email est obligatoire.");
-  }
-
-  if (!payload.organization_id) {
-    return setErrorMessage("L'organisation est obligatoire.");
-  }
-
-  setSaving(true);
-
-  try {
-    if (editingId) {
-      await updateAdminProfile(editingId, payload);
-      alert("Profil modifié avec succès.");
-    } else {
-      await registerFidel(payload);
-      alert(
-        "Fidèle créé avec succès. Le mot de passe provisoire a été envoyé par email."
-      );
+    setSaving(true);
+    try {
+      if (editingId) {
+        await updateAdminProfile(editingId, payload);
+      } else {
+        await registerFidel(payload);
+      }
+      handleCancel();
+      await loadProfiles(currentPage);
+    } catch (error) {
+      console.error("[AdminProfilesPage] handleSubmit:", error);
+      setErrorMessage(error?.message || "Impossible d'enregistrer le profil.");
+    } finally {
+      setSaving(false);
     }
-
-    handleCancel();
-    await loadPageData();
-  } catch (error) {
-    console.error("[AdminProfilesPage] handleSubmit:", error);
-    setErrorMessage(
-      error?.message || "Impossible d'enregistrer le profil."
-    );
-  } finally {
-    setSaving(false);
-  }
-};
+  };
 
   const handleDelete = async (id) => {
-  if (!window.confirm("Supprimer ce profil ?")) return;
-
-  setDeletingId(id);
-  setErrorMessage("");
-
-  try {
-    await deleteProfile(id);
-    await loadPageData();
-
-    if (selectedProfile?.id === id) {
-      setSelectedProfile(null);
+    if (!window.confirm("Supprimer ce profil ?")) return;
+    setDeletingId(id);
+    setErrorMessage("");
+    try {
+      await deleteProfile(id);
+      await loadProfiles(currentPage);
+      if (selectedProfile?.id === id) setSelectedProfile(null);
+      if (assignProfile?.id   === id) setAssignProfile(null);
+      if (editingId           === id) handleCancel();
+    } catch (error) {
+      console.error("[AdminProfilesPage] handleDelete:", error);
+      setErrorMessage(error?.message || "Impossible de supprimer le profil.");
+    } finally {
+      setDeletingId(null);
     }
-
-    if (assignProfile?.id === id) {
-      setAssignProfile(null);
-    }
-
-    if (editingId === id) {
-      handleCancel();
-    }
-  } catch (error) {
-    console.error("[AdminProfilesPage] handleDelete:", error);
-    setErrorMessage(
-      error?.message || "Impossible de supprimer le profil."
-    );
-  } finally {
-    setDeletingId(null);
-  }
-};
+  };
 
   const handleApprove = async (id) => {
     setApprovingId(id);
     setErrorMessage("");
     try {
       await approveProfile(id);
-      await loadPageData();
+      await loadProfiles(currentPage);
     } catch (error) {
       console.error("[AdminProfilesPage] handleApprove:", error);
       setErrorMessage(error?.message || "Impossible de valider le profil.");
@@ -331,13 +298,12 @@ export default function AdminProfilesPage() {
     setErrorMessage("");
   };
 
-  const handleAssignSheep = async (sheep) => {
+  const handleAssignSheep = async (s) => {
     if (!assignProfile) return;
-    setAssigningSheepId(sheep.id);
+    setAssigningSheepId(s.id);
     try {
-      // ✅ Appel API réel via usersApi
-      await assignSheep(assignProfile.id, sheep.id);
-      await loadPageData();
+      await assignSheep(assignProfile.id, s.id);
+      await loadStaticData();
       setAssignProfile(null);
     } catch (error) {
       console.error("[AdminProfilesPage] handleAssignSheep:", error);
@@ -351,8 +317,6 @@ export default function AdminProfilesPage() {
     () => selectedProfile ? getAssignedSheepForProfile(selectedProfile.id) : [],
     [selectedProfile, sheepByProfile]
   );
-
-  // ===== RENDER =====
 
   return (
     <div className="profiles-page">
@@ -385,6 +349,9 @@ export default function AdminProfilesPage() {
           onOpenAssignModal={handleOpenAssignModal}
           getOrganizationLabel={getOrganizationLabel}
           getAssignedSheepCountForProfile={getAssignedSheepCountForProfile}
+          // ✅ Pagination
+          meta={profilesMeta}
+          onPageChange={setCurrentPage}
         />
       </div>
 
