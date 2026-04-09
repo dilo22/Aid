@@ -21,9 +21,9 @@ const ProtectedRoute = ({ children, roles = [] }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (profile.must_change_password && location.pathname !== "/change-password") {
-    return <Navigate to="/change-password" replace />;
-  }
+ if (profile.must_change_password && location.pathname !== "/change-password") {
+  return <Navigate to="/change-password" replace />;
+}
 
   if (profile.status === "pending" && profile.role === "fidel") {
   // ✅ Autorise uniquement les routes fidèle
