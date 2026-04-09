@@ -34,15 +34,11 @@ export default function ResetPasswordPage() {
   const [successMessage,  setSuccessMessage]  = useState("");
   const [sessionReady,    setSessionReady]    = useState(false);
 
-  // ✅ Écoute l'événement PASSWORD_RECOVERY de Supabase
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY") {
-        setSessionReady(true);
-      }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") setSessionReady(true);
     });
 
-    // ✅ Vérifie aussi si une session existe déjà (lien déjà cliqué)
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) setSessionReady(true);
     });
@@ -65,10 +61,10 @@ export default function ResetPasswordPage() {
     setErrorMessage("");
     setSuccessMessage("");
 
-    if (password.length < 8)       return setErrorMessage("Le mot de passe doit contenir au moins 8 caractères.");
-    if (!/[A-Z]/.test(password))   return setErrorMessage("Le mot de passe doit contenir au moins une majuscule.");
-    if (!/\d/.test(password))      return setErrorMessage("Le mot de passe doit contenir au moins un chiffre.");
-    if (password !== confirmPassword) return setErrorMessage("Les mots de passe ne correspondent pas.");
+    if (password.length < 8)          return setErrorMessage("Le mot de passe doit contenir au moins 8 caracteres.");
+    if (!/[A-Z]/.test(password))      return setErrorMessage("Le mot de passe doit contenir au moins une majuscule.");
+    if (!/\d/.test(password))         return setErrorMessage("Le mot de passe doit contenir au moins un chiffre.");
+    if (password !== confirmPassword)  return setErrorMessage("Les mots de passe ne correspondent pas.");
 
     setSaving(true);
     try {
@@ -76,26 +72,26 @@ export default function ResetPasswordPage() {
 
       if (error) {
         if (error.message?.toLowerCase().includes("token")) {
-          throw new Error("Le lien de réinitialisation a expiré. Demandez-en un nouveau.");
+          throw new Error("Le lien de reinitialisation a expire. Demandez-en un nouveau.");
         }
-        throw new Error("Impossible de réinitialiser le mot de passe.");
+        throw new Error("Impossible de reinitialiser le mot de passe.");
       }
 
-      setSuccessMessage("Mot de passe réinitialisé avec succès.");
+      setSuccessMessage("Mot de passe reinitialise avec succes.");
       setTimeout(() => navigate("/login", { replace: true }), 1200);
     } catch (error) {
       console.error("[ResetPasswordPage]", error);
-      setErrorMessage(error?.message || "Impossible de réinitialiser le mot de passe.");
+      setErrorMessage(error?.message || "Impossible de reinitialiser le mot de passe.");
     } finally {
       setSaving(false);
     }
   };
 
   const CHECKS = [
-    [rules.length,  "Au moins 8 caractères"],
+    [rules.length,  "Au moins 8 caracteres"],
     [rules.upper,   "Une lettre majuscule"],
     [rules.number,  "Un chiffre"],
-    [rules.special, "Un caractère spécial"],
+    [rules.special, "Un caractere special"],
     [rules.match,   "Les deux champs correspondent"],
   ];
 
@@ -105,22 +101,21 @@ export default function ResetPasswordPage() {
         <div className="auth-card">
 
           <div className="auth-top-bar">
-            <Link to="/login" className="auth-back-link">← Retour à la connexion</Link>
-            <span className="auth-badge auth-badge--blue">Réinitialisation</span>
+            <Link to="/login" className="auth-back-link">Retour a la connexion</Link>
+            <span className="auth-badge auth-badge--blue">Reinitialisation</span>
           </div>
 
           <div className="auth-brand">
             <div className="auth-logo">🔐</div>
             <h1 className="auth-title">Nouveau mot de passe</h1>
             <p className="auth-subtitle">
-              Choisissez un mot de passe sécurisé pour finaliser la récupération de votre compte.
+              Choisissez un mot de passe securise pour finaliser la recuperation de votre compte.
             </p>
           </div>
 
-          {/* ✅ Avertissement si session pas encore prête */}
           {!sessionReady && (
             <div className="auth-error">
-              Lien invalide ou expiré. Veuillez demander un nouveau lien de réinitialisation.
+              Lien invalide ou expire. Veuillez demander un nouveau lien de reinitialisation.
             </div>
           )}
 
@@ -128,7 +123,6 @@ export default function ResetPasswordPage() {
           {successMessage && <div className="auth-success">{successMessage}</div>}
 
           <form onSubmit={handleSubmit} className="auth-form">
-
             <div className="auth-field">
               <label htmlFor="password" className="auth-label">Nouveau mot de passe</label>
               <div className="auth-password-wrap">
@@ -150,7 +144,7 @@ export default function ResetPasswordPage() {
                   style={{ width: `${passwordScore}%` }} />
               </div>
               <p className="auth-meter-label">
-                Solidité : <strong>{getMeterLabel(passwordScore)}</strong>
+                Solidite : <strong>{getMeterLabel(passwordScore)}</strong>
               </p>
             </div>
 
@@ -177,14 +171,13 @@ export default function ResetPasswordPage() {
               ))}
             </div>
 
-            <button type="submit" className="auth-btn"
-              disabled={saving || !sessionReady}>
-              {saving ? "Mise à jour..." : "Enregistrer le nouveau mot de passe"}
+            <button type="submit" className="auth-btn" disabled={saving || !sessionReady}>
+              {saving ? "Mise a jour..." : "Enregistrer le nouveau mot de passe"}
             </button>
           </form>
 
           <div className="auth-footer">
-            <Link to="/login" className="auth-switch-link">Revenir à la connexion</Link>
+            <Link to="/login" className="auth-switch-link">Revenir a la connexion</Link>
           </div>
 
         </div>
