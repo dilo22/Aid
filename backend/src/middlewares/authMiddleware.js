@@ -44,9 +44,12 @@ export const requireAuth = async (req, res, next) => {
       throw new ApiError(403, "Compte en attente de validation");
     }
 
-    const isChangePasswordRoute = req.originalUrl.includes("/auth/change-password");
+    // ✅ Routes autorisées même si must_change_password = true
+    const isAllowedRoute =
+      req.originalUrl.includes("/auth/change-password") ||
+      req.originalUrl.includes("/auth/me");
 
-    if (profile.must_change_password && !isChangePasswordRoute) {
+    if (profile.must_change_password && !isAllowedRoute) {
       throw new ApiError(403, "Vous devez changer votre mot de passe");
     }
 
@@ -61,11 +64,11 @@ export const requireAuth = async (req, res, next) => {
     }
 
     req.user = {
-      id: user.id,
-      email: user.email,
-      role: profile.role,
-      organization_id: profile.organization_id,
-      status: profile.status,
+      id:                   user.id,
+      email:                user.email,
+      role:                 profile.role,
+      organization_id:      profile.organization_id,
+      status:               profile.status,
       must_change_password: profile.must_change_password ?? false,
     };
 

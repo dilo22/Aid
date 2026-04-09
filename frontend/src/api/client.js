@@ -6,10 +6,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use(async (config) => {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
+  const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token;
 
   if (token) {
@@ -22,13 +19,18 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const status = error.response?.status;
-    const message =
-      error.response?.data?.message || error.message || "Erreur réseau";
+    const status  = error.response?.status;
+    const message = error.response?.data?.message || error.message || "Erreur réseau";
 
     if (status === 401) {
       await supabase.auth.signOut();
       window.location.href = "/login";
+      return Promise.reject(error);
+    }
+
+    // ✅ Redirige vers change-password si must_change_password = true
+    if (status === 403 && message.includes("changer votre mot de passe")) {
+      window.location.href = "/change-password";
       return Promise.reject(error);
     }
 
