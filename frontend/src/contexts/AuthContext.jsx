@@ -29,14 +29,15 @@ export const AuthProvider = ({ children }) => {
       const me = await getMe();
       setProfile(normalizeProfile(me));
     } catch (err) {
-      // ✅ 403 pending — ne pas vider le profil si déjà chargé
       if (err?.response?.status === 403) {
-        console.warn("[AuthContext] 403 — compte pending ou rejeté");
+        // ✅ 403 — ne pas vider le profil, ne pas boucler
+        console.warn("[AuthContext] 403 — accès refusé");
       } else {
         setProfile(null);
       }
     } finally {
       isFetchingProfile.current = false;
+      setLoading(false); // ✅ Toujours stopper le loading
     }
   };
 
@@ -47,15 +48,17 @@ export const AuthProvider = ({ children }) => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!mounted) return;
 
-      // ✅ Token recovery dans le hash → redirection
       if (window.location.hash.includes("type=recovery")) {
         window.location.href = "/reset-password" + window.location.hash;
         return;
       }
 
       setSession(session ?? null);
-      if (session) await fetchProfile();
-      if (mounted) setLoading(false);
+      if (session) {
+        await fetchProfile();
+      } else {
+        setLoading(false);
+      }
     };
 
     init();
@@ -64,7 +67,6 @@ export const AuthProvider = ({ children }) => {
       if (!mounted) return;
       if (event === "INITIAL_SESSION") return;
 
-      // ✅ Redirection reset password
       if (event === "PASSWORD_RECOVERY") {
         window.location.href = "/reset-password";
         return;
@@ -78,11 +80,9 @@ export const AuthProvider = ({ children }) => {
         return;
       }
 
-      // ✅ Ne recharge le profil que si pas déjà chargé
-      if (event === "SIGNED_IN" && session) {
-        if (!profile) {
-          Promise.resolve().then(() => { if (mounted) fetchProfile(); });
-        }
+      // ✅ Ne recharge que si pas de profil ET pas déjà en cours
+      if (event === "SIGNED_IN" && session && !isFetchingProfile.current) {
+        Promise.resolve().then(() => { if (mounted) fetchProfile(); });
       }
     });
 
