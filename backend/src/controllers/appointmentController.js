@@ -55,7 +55,11 @@ export const updateAppointmentSettings = async (req, res, next) => {
 };
 
 // ===== GÉNÉRATION =====
+console.log("[GENERATE] Premier appointment:", JSON.stringify(appointments[0]));
+console.log("[GENERATE] Total:", appointments.length);
 
+const { error: insertError } = await supabase
+  .from("appointments").insert(appointments);
 export const generateAppointments = async (req, res, next) => {
   try {
     const { type } = req.params;
