@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { supabase } from "../config/supabase.js";
 import { ApiError } from "../utils/apiError.js";
-import { sendWelcomeEmail } from "../services/emailService.js";
+import { sendWelcomeEmail } from "../utils/emailService.js";
 
 const isValidUUID = (id) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
