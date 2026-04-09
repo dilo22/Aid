@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
-import "../../styles/AuthPages.css";
+import "../styles/AuthPages.css";
 
 const getPasswordScore = (password) => {
   let score = 0;
@@ -32,6 +32,23 @@ export default function ResetPasswordPage() {
   const [saving,          setSaving]          = useState(false);
   const [errorMessage,    setErrorMessage]    = useState("");
   const [successMessage,  setSuccessMessage]  = useState("");
+  const [sessionReady,    setSessionReady]    = useState(false);
+
+  // ✅ Écoute l'événement PASSWORD_RECOVERY de Supabase
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setSessionReady(true);
+      }
+    });
+
+    // ✅ Vérifie aussi si une session existe déjà (lien déjà cliqué)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) setSessionReady(true);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const passwordScore = useMemo(() => getPasswordScore(password), [password]);
 
@@ -48,26 +65,16 @@ export default function ResetPasswordPage() {
     setErrorMessage("");
     setSuccessMessage("");
 
-    // ✅ Validation alignée backend
-    if (password.length < 8) {
-      return setErrorMessage("Le mot de passe doit contenir au moins 8 caractères.");
-    }
-    if (!/[A-Z]/.test(password)) {
-      return setErrorMessage("Le mot de passe doit contenir au moins une majuscule.");
-    }
-    if (!/\d/.test(password)) {
-      return setErrorMessage("Le mot de passe doit contenir au moins un chiffre.");
-    }
-    if (password !== confirmPassword) {
-      return setErrorMessage("Les mots de passe ne correspondent pas.");
-    }
+    if (password.length < 8)       return setErrorMessage("Le mot de passe doit contenir au moins 8 caractères.");
+    if (!/[A-Z]/.test(password))   return setErrorMessage("Le mot de passe doit contenir au moins une majuscule.");
+    if (!/\d/.test(password))      return setErrorMessage("Le mot de passe doit contenir au moins un chiffre.");
+    if (password !== confirmPassword) return setErrorMessage("Les mots de passe ne correspondent pas.");
 
     setSaving(true);
     try {
       const { error } = await supabase.auth.updateUser({ password });
 
       if (error) {
-        // ✅ Message neutre si token expiré ou invalide
         if (error.message?.toLowerCase().includes("token")) {
           throw new Error("Le lien de réinitialisation a expiré. Demandez-en un nouveau.");
         }
@@ -110,6 +117,13 @@ export default function ResetPasswordPage() {
             </p>
           </div>
 
+          {/* ✅ Avertissement si session pas encore prête */}
+          {!sessionReady && (
+            <div className="auth-error">
+              Lien invalide ou expiré. Veuillez demander un nouveau lien de réinitialisation.
+            </div>
+          )}
+
           {errorMessage   && <div className="auth-error">{errorMessage}</div>}
           {successMessage && <div className="auth-success">{successMessage}</div>}
 
@@ -122,7 +136,7 @@ export default function ResetPasswordPage() {
                   type={showPassword ? "text" : "password"}
                   value={password} onChange={(e) => setPassword(e.target.value)}
                   placeholder="Nouveau mot de passe"
-                  className="auth-input" disabled={saving} required />
+                  className="auth-input" disabled={saving || !sessionReady} required />
                 <button type="button" className="auth-toggle-btn"
                   onClick={() => setShowPassword((p) => !p)}>
                   {showPassword ? "Masquer" : "Afficher"}
@@ -130,7 +144,6 @@ export default function ResetPasswordPage() {
               </div>
             </div>
 
-            {/* Indicateur de force */}
             <div className="auth-meter-wrap">
               <div className="auth-meter">
                 <div className={`auth-meter-fill ${getMeterClass(passwordScore)}`}
@@ -148,7 +161,7 @@ export default function ResetPasswordPage() {
                   type={showConfirm ? "text" : "password"}
                   value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Confirmez votre mot de passe"
-                  className="auth-input" disabled={saving} required />
+                  className="auth-input" disabled={saving || !sessionReady} required />
                 <button type="button" className="auth-toggle-btn"
                   onClick={() => setShowConfirm((p) => !p)}>
                   {showConfirm ? "Masquer" : "Afficher"}
@@ -156,7 +169,6 @@ export default function ResetPasswordPage() {
               </div>
             </div>
 
-            {/* Checklist */}
             <div className="auth-checklist">
               {CHECKS.map(([ok, label]) => (
                 <div key={label} className={`auth-check-item${ok ? " auth-check-item--ok" : ""}`}>
@@ -165,7 +177,8 @@ export default function ResetPasswordPage() {
               ))}
             </div>
 
-            <button type="submit" className="auth-btn" disabled={saving}>
+            <button type="submit" className="auth-btn"
+              disabled={saving || !sessionReady}>
               {saving ? "Mise à jour..." : "Enregistrer le nouveau mot de passe"}
             </button>
           </form>
