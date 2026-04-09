@@ -28,8 +28,13 @@ export const AuthProvider = ({ children }) => {
     try {
       const me = await getMe();
       setProfile(normalizeProfile(me));
-    } catch {
-      setProfile(null);
+    } catch (err) {
+      // ✅ 403 pending — ne pas vider le profil si déjà chargé
+      if (err?.response?.status === 403) {
+        console.warn("[AuthContext] 403 — compte pending ou rejeté");
+      } else {
+        setProfile(null);
+      }
     } finally {
       isFetchingProfile.current = false;
     }
@@ -39,47 +44,47 @@ export const AuthProvider = ({ children }) => {
     let mounted = true;
 
     const init = async () => {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!mounted) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!mounted) return;
 
-  // ✅ Si on arrive avec un token recovery dans le hash
-  if (window.location.hash.includes("type=recovery")) {
-    window.location.href = "/reset-password" + window.location.hash;
-    return;
-  }
+      // ✅ Token recovery dans le hash → redirection
+      if (window.location.hash.includes("type=recovery")) {
+        window.location.href = "/reset-password" + window.location.hash;
+        return;
+      }
 
-  setSession(session ?? null);
-  if (session) await fetchProfile();
-  if (mounted) setLoading(false);
-};
+      setSession(session ?? null);
+      if (session) await fetchProfile();
+      if (mounted) setLoading(false);
+    };
 
     init();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-  if (!mounted) return;
-  if (event === "INITIAL_SESSION") return;
+      if (!mounted) return;
+      if (event === "INITIAL_SESSION") return;
 
-  // ✅ Redirection automatique vers reset-password
-  if (event === "PASSWORD_RECOVERY") {
-    window.location.href = "/reset-password";
-    return;
-  }
+      // ✅ Redirection reset password
+      if (event === "PASSWORD_RECOVERY") {
+        window.location.href = "/reset-password";
+        return;
+      }
 
-  setSession(session ?? null);
+      setSession(session ?? null);
 
-  if (event === "SIGNED_OUT") {
-    setProfile(null);
-    setLoading(false);
-    return;
-  }
+      if (event === "SIGNED_OUT") {
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
 
-  if (event === "SIGNED_IN" && session) {
-  // ✅ Ne recharge que si pas de profil déjà chargé
-  if (!profile) {
-    Promise.resolve().then(() => { if (mounted) fetchProfile(); });
-  }
-}
-});
+      // ✅ Ne recharge le profil que si pas déjà chargé
+      if (event === "SIGNED_IN" && session) {
+        if (!profile) {
+          Promise.resolve().then(() => { if (mounted) fetchProfile(); });
+        }
+      }
+    });
 
     return () => {
       mounted = false;
@@ -96,11 +101,11 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider value={{
       session,
-      user:            session?.user ?? null,
+      user:           session?.user ?? null,
       profile,
       loading,
       signOut,
-      refreshProfile:  fetchProfile,
+      refreshProfile: fetchProfile,
     }}>
       {children}
     </AuthContext.Provider>

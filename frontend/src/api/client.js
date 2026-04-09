@@ -28,14 +28,28 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // ✅ Redirige vers change-password si must_change_password = true
-   if (status === 403 && message.includes("changer votre mot de passe")) {
-  // ✅ Évite la boucle infinie
-  if (!window.location.pathname.includes("/change-password")) {
-    window.location.href = "/change-password";
-  }
-  return Promise.reject(error);
-}
+    if (status === 403) {
+      // ✅ Changer mot de passe
+      if (message.includes("changer votre mot de passe")) {
+        if (!window.location.pathname.includes("/change-password")) {
+          window.location.href = "/change-password";
+        }
+        return Promise.reject(error);
+      }
+
+      // ✅ Compte pending — ne pas rediriger, le frontend gère
+      if (message.includes("attente de validation")) {
+        return Promise.reject(error);
+      }
+
+      // ✅ Compte rejeté
+      if (message.includes("rejeté")) {
+        await supabase.auth.signOut();
+        window.location.href = "/login";
+        return Promise.reject(error);
+      }
+    }
+
     if (status === 429) {
       error.message = "Trop de requêtes. Veuillez patienter.";
       return Promise.reject(error);
