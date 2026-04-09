@@ -7,35 +7,32 @@ const ProtectedRoute = ({ children, roles = [] }) => {
   const { session, profile, loading } = useAuth();
   const location = useLocation();
 
-  // Attendre que l'auth soit vraiment initialisée
   if (loading || session === undefined) return <Loader />;
 
   if (!session) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Session OK mais profil pas encore chargé → attendre
   if (session && !profile) return <Loader />;
 
   if (profile.deleted_at) {
     return <Navigate to="/login" replace />;
   }
 
- if (profile.must_change_password && location.pathname !== "/change-password") {
-  return <Navigate to="/change-password" replace />;
-}
-
-  if (profile.status === "pending" && profile.role === "fidel") {
-  // ✅ Autorise uniquement les routes fidèle
-  const fidelRoutes = ["/fidel", "/fidel/profile", "/fidel/contact"];
-  const isOnFidelRoute = fidelRoutes.some(r => location.pathname.startsWith(r));
-  if (!isOnFidelRoute) {
-    return <Navigate to="/fidel" replace />;
+  if (profile.must_change_password && location.pathname !== "/change-password") {
+    return <Navigate to="/change-password" replace />;
   }
-}
 
   if (profile.status === "rejected") {
     return <Navigate to="/login" replace />;
+  }
+
+  // ✅ Fidèles pending — accès limité à leur espace
+  if (profile.status === "pending" && profile.role === "fidel") {
+    const fidelRoutes = ["/fidel", "/fidel/profile", "/fidel/contact"];
+    const isOnFidelRoute = fidelRoutes.some(r => location.pathname.startsWith(r));
+    if (!isOnFidelRoute) return <Navigate to="/fidel" replace />;
+    return children; // ✅ Autorise directement sans autres checks
   }
 
   if (isAllowedStatus(profile.status) && location.pathname === "/pending-approval") {
