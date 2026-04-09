@@ -80,20 +80,19 @@ export default function AdminOrganizationsPage() {
       setProfilesLoading(false);
     }
   };
+useEffect(() => {
+  loadProfiles();
+}, []);
 
-  useEffect(() => {
-    loadProfiles();
-  }, []);
+// ✅ Un seul useEffect pour les filtres ET la pagination
+useEffect(() => {
+  loadOrganizations(currentPage);
+}, [currentPage, search, statusFilter, typeFilter, cityFilter]);
 
-  useEffect(() => {
-    setCurrentPage(1);
-    loadOrganizations(1);
-  }, [search, statusFilter, typeFilter, cityFilter]);
-
-  useEffect(() => {
-    loadOrganizations(currentPage);
-  }, [currentPage]);
-
+// ✅ Reset page séparé — ne déclenche pas loadOrganizations directement
+useEffect(() => {
+  setCurrentPage(1);
+}, [search, statusFilter, typeFilter, cityFilter]);
   // ===== FORM =====
 
   const handleChange = (e) => {

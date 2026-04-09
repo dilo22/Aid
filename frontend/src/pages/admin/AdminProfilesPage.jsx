@@ -136,18 +136,18 @@ export default function AdminProfilesPage() {
   };
 
   useEffect(() => {
-    loadStaticData();
-  }, []);
+  loadStaticData();
+}, []);
 
-  // ✅ Recharge quand les filtres ou la page changent
-  useEffect(() => {
-    setCurrentPage(1);
-    loadProfiles(1);
-  }, [roleFilter, statusFilter, search]);
+// ✅ Reset page quand les filtres changent
+useEffect(() => {
+  setCurrentPage(1);
+}, [roleFilter, statusFilter, search]);
 
-  useEffect(() => {
-    loadProfiles(currentPage);
-  }, [currentPage]);
+// ✅ Chargement unique — déclenché par page ET filtres
+useEffect(() => {
+  loadProfiles(currentPage);
+}, [currentPage, roleFilter, statusFilter, search]);
 
   // ===== FILTRES LOCAUX (sur la page courante seulement) =====
   // Les filtres principaux sont gérés côté backend

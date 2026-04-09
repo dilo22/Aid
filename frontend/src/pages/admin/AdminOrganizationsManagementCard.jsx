@@ -147,7 +147,9 @@ export default function AdminOrganizationsManagementCard({
               </tr>
             ) : filteredOrganizations.length === 0 ? (
               <tr>
-                <td colSpan={7} className="org-empty">Aucune organisation trouvée.</td>
+                <td colSpan={7} className="org-empty">
+                  {meta?.total > 0 ? `Page vide — ${meta.total} organisations au total` : "Aucune organisation trouvée."}
+                </td>
               </tr>
             ) : (
               filteredOrganizations.map((org) => {
@@ -188,8 +190,10 @@ export default function AdminOrganizationsManagementCard({
         {isLoading ? (
           <div className="org-mobile-loading"><Loader small /></div>
         ) : filteredOrganizations.length === 0 ? (
-          <div className="org-mobile-empty">Aucune organisation trouvée.</div>
-        ) : (
+          <div className="org-mobile-empty">
+            {meta?.total > 0 ? `Page vide — ${meta.total} organisations au total` : "Aucune organisation trouvée."}
+          </div>
+        ): (
           filteredOrganizations.map((org) => (
             <div key={org.id} className="org-mobile-card" onClick={() => onRowClick(org)}>
               <div className="org-mobile-card-header">
