@@ -40,7 +40,8 @@ export const requireAuth = async (req, res, next) => {
       throw new ApiError(403, "Compte rejeté");
     }
 
-    if (profile.status === "pending") {
+    // ✅ Les fidèles pending peuvent accéder à leur espace (avec contenu limité)
+    if (profile.status === "pending" && profile.role !== "fidel") {
       throw new ApiError(403, "Compte en attente de validation");
     }
 
