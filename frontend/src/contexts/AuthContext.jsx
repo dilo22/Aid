@@ -74,8 +74,11 @@ export const AuthProvider = ({ children }) => {
   }
 
   if (event === "SIGNED_IN" && session) {
+  // ✅ Ne recharge le profil que si on n'en a pas déjà un
+  if (!profile) {
     Promise.resolve().then(() => { if (mounted) fetchProfile(); });
   }
+}
 });
 
     return () => {
