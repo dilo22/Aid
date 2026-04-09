@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import api from "../../api/client";
-import "../styles/AuthPages.css";
+import "../../styles/AuthPages.css";
 
 export default function ChangePasswordPage() {
   const navigate  = useNavigate();

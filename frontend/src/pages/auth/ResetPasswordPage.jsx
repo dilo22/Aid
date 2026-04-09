@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
-import "../styles/AuthPages.css";
+import "../../styles/AuthPages.css";
 
 const getPasswordScore = (password) => {
   let score = 0;
